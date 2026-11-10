@@ -61,6 +61,16 @@ RSpec.configure do |config|
   # You can also infer these behaviours automatically by location, e.g.
   # /spec/models would pull in the same behaviour as `type: :model` but this
   # behaviour is considered legacy and will be removed in a future version.
+  config.infer_spec_type_from_file_location!
+  config.include FactoryBot::Syntax::Methods
+  config.include Devise::Test::IntegrationHelpers, type: :request
+  #
+  # Rails 8 lazy-loads routes in test. Devise configures Warden strategies when
+  # routes finalize; without this, the first sign-in POST in a process 422s.
+  config.before(:suite) do
+    Rails.application.reload_routes_unless_loaded
+  end
+  #
   #
   # To enable this behaviour uncomment the line below.
   # config.infer_spec_type_from_file_location!
@@ -69,4 +79,11 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
   # arbitrary gems may also be filtered via:
   # config.filter_gems_from_backtrace("gem name")
+end
+
+Shoulda::Matchers.configure do |config|
+  config.integrate do |with|
+    with.test_framework :rspec
+    with.library :rails
+  end
 end
