@@ -1,0 +1,434 @@
+# Alcance: Catálogo Bonaparte
+
+Documento de la prueba técnica de la Refaccionaria Trópico de Cáncer. Recoge el enunciado, el papel de cada archivo, la investigación de las cinco piezas, las decisiones de alcance y el lenguaje de dominio con el que se va a construir la aplicación.
+
+La aplicación de Rails todavía no existe. Lo que se investiga se guarda en la base de datos, en las tablas del modelado de datos. La aplicación no carga un catálogo escrito de antemano.
+
+## Enunciado
+
+Hay que desarrollar una aplicación pequeña en Ruby on Rails que tome un Excel de origen y genere un Excel con la misma forma que el ejemplo.
+
+La idea es conseguir las aplicaciones, los intercambios y los atributos reales de las piezas del archivo de origen. Se puede usar cualquier herramienta, librería, modelo o servicio para investigarlas.
+
+La condición de la prueba es el determinismo: si el mismo archivo se procesa dos veces, el resultado tiene que ser el mismo. Un resultado distinto entre corridas se considera un error.
+
+Entregables:
+
+- El Excel generado con los datos catalogados.
+- Acceso al repositorio con la implementación.
+
+El encabezado comercial del catálogo es **Catálogo Bonaparte - Refaccionaria Trópico de Cáncer**.
+
+## Los dos Excel
+
+No son el mismo conjunto de piezas. Comparten las seis hojas y las columnas. El de ejemplo muestra el resultado ya armado de otras diez autopartes. El de datos es el ejercicio: cinco piezas, con el resto de las hojas vacías.
+
+| Archivo | Papel | Piezas |
+|---|---|---|
+| `ejemplo_prueba_técnica.xlsx` | Molde del entregable. Dice cómo se escribe cada hoja cuando ya está llena. | 10 referencias distintas a las del ejercicio |
+| `data_prueba_técnica.xlsx` | Entrada del ejercicio. | 5 referencias |
+
+Ningún número de parte del archivo de datos aparece como referencia en el ejemplo. Hay parecidos que no hay que mezclar: el ejemplo trae `DM-152` y `FSX-5840299`; el ejercicio trae `RM-152` y `FSX-5840301`. `DM-152` sí aparece en el ejercicio, pero como símil escrito dentro de la descripción de `RM-152`, no como la pieza a publicar.
+
+### Hojas y volumen del ejemplo
+
+| Hoja | Filas en el ejemplo | Filas en los datos |
+|---|---|---|
+| Origen | 10 | 5 |
+| Catálogo | 10 | vacía |
+| Aplicaciones | 2,610 | vacía |
+| Intercambios | 31 | vacía |
+| Atributos | 74 | vacía |
+| Métricas | el cuadro de conteos | el mismo cuadro en ceros |
+
+Esas 2,610 filas de Aplicaciones no son 2,610 hechos distintos. Al agrupar vehículo, submodelo, motor y mercado, y dejar el año como rango, el ejemplo cabe en unos 640 registros. Cerca de 1,970 filas existen porque cada año del rango se escribe en su propio renglón.
+
+### Columnas de cada hoja
+
+**Origen.** Cod interno, Número de parte, Descripción del artículo, Descripcion, Grupo de articulos, Fabricante, Unidad.
+
+**Catálogo.** Referencia, Marca, Categoría, Sistema, Subsistema, Producto, Descripción.
+
+**Aplicaciones.** Referencia, Marca, Producto, Posición, Fabricante, Modelo, Submodelo, Año, Litros, CC, CID, Cilindros, Bloque, Combustible, Mercado.
+
+**Intercambios.** Referencia, Marca, Producto, Intercambio, Marca intercambio, Origen.
+
+**Atributos.** Referencia, Marca, Producto, Clase, Atributo, Unidad, Valor.
+
+**Métricas.** Título `Catálogo Bonaparte - Refaccionaria Trópico de Cáncer`. Después, Referencias. Luego tres bloques —Aplicaciones, Intercambios y Atributos— cada uno con Origen e Incrementos. En el ejemplo, Origen está en 0 porque el archivo de entrada trae esas hojas vacías, e Incrementos es igual al total generado.
+
+En Intercambios, la columna Origen no es la hoja de entrada. Ahí Origen vale `Aftermarket` u `OEM`.
+
+## Cómo se pasa del Excel crudo al catálogo
+
+Cada fila de Origen es una pieza de la refaccionaria. Trae el número propio, la marca, el grupo y una frase libre. La frase se lee de izquierda a derecha y suele traer, en este orden: números de otras marcas, el vehículo semilla, el motor, los años y alguna medida.
+
+Esa frase no alcanza para llenar el catálogo. Dice qué buscar. Las listas reales —en qué vehículos entra, con qué otros números se pide y qué medidas tiene— salen de la ficha de autopartes de un símil.
+
+`RM-152` ilustra el recorrido:
+
+| Campo de origen | Valor |
+|---|---|
+| Cod interno | 14481 |
+| Número de parte | RM-152 |
+| Fabricante | REXITE |
+| Grupo | BOMBA DE ACEITE |
+| Descripcion | DM-152 NISSAN PICKUP L4 L6 1.8 2.4 2.0 KA24DE L20B DOHC SOHC 8V 12V 76/14 |
+
+De ahí quedan firmes tres datos de la refaccionaria: la pieza es `RM-152`, la marca es Rexite y es una bomba de aceite. `DM-152` va al principio de la frase, antes de Nissan, y es el símil con el que se busca la ficha. La ficha encontrada es la bomba Melling `M152`, equivalente a Dynagear `DM-152`. Esa ficha aporta los vehículos, los otros números y las medidas que se publican bajo la referencia `RM-152`.
+
+El código interno, la unidad y el texto libre se conservan en la hoja Origen. No se reinterpretan para inventar filas.
+
+### Dónde se busca
+
+No hay una base de autopartes con una conexión clara para estas marcas. La investigación se hace en fichas públicas: se busca el símil entre comillas, junto con el tipo de pieza. Una página sirve cuando es la ficha de un producto y el número de esa ficha es el que se buscó. Ahí se leen aplicaciones, intercambios y especificaciones.
+
+Un número que no aparece, o que aparece en otra pieza distinta, no se publica.
+
+## Las cinco piezas investigadas
+
+Estas cinco piezas se leyeron en fichas públicas para saber qué se puede publicar. Cada dato sale de una de esas páginas. Un código de la frase que ninguna ficha confirmó no se publica como intercambio. Cuando la aplicación las investigue, ese resultado queda en `datasheets`, `parts`, `applications`, `interchanges` y `attributes`.
+
+| Referencia | Marca | Producto | Aplicaciones | Intercambios | Atributos |
+|---|---|---|---|---|---|
+| RM-152 | Rexite | Bomba de aceite del motor | 8 rangos | 22 | 12 |
+| TK1283-1 | Revo | Kit de cadena de tiempo | 19 rangos | 4 | 14 |
+| HL-7025S | Elgin | Puntería hidráulica | 2 rangos | 6 | 3 |
+| SP26-329R/L+20 | Safety | Pistón de motor | 2 rangos | 0 | 2 |
+| FSX-5840301 | Fraco | Juego de empaques de motor | 6 rangos | 1 | 5 |
+
+**RM-152.** Bomba de aceite. El símil de la frase es `DM-152`. La ficha usada es Melling `M152`. Cubre Nissan 280ZX, D21, Pathfinder, Van, 240SX, Pickup, Frontier y Xterra, con años y, cuando la ficha los da, litros y cilindros. Entre los intercambios están Dynagear, Federated, Melling, Elgin y números OEM de Nissan (`15010-F450A`, `15010-40F0A`, `15010-3S500`, `15010-40F00`). Fuentes: Parts Hawk, JEGS y YoyoPart.
+
+**TK1283-1.** Kit de cadena de tiempo del Pentastar. El símil confirmado es Cloyes `9-0511S`. También se publican Dynagear `DDM-77020`, NAPA `90511S` y GEAR `76260`. Las aplicaciones son Chrysler, Dodge, Jeep y Ram, sobre todo 3.6 L y, en Cherokee, 3.2 L. Algunas aplicaciones de Parts Hawk no publican el litraje y se guardan sin él. Fuentes: Cloyes, Parts Hawk, el PDF de Baleros BISA y Fenix.
+
+**HL-7025S.** Puntería hidráulica AFM/DFM de Elgin, vendida por pieza. Elgin no publica una lista de camionetas: publica familias de motor. Por eso las dos aplicaciones son `Motores LS con AFM` desde 2007 y `Motores LT EcoTec3 con DFM` desde 2019, sin año final. El ejemplo de la prueba no trae punterías; el subsistema se alineó con el tren de válvulas. Fuentes: Elgin y Northern Auto Parts.
+
+**SP26-329R/L+20.** Pistón Safety, mano derecha e izquierda, para Chevrolet Silverado y GMC Sierra 4.3 L OHV de 12 válvulas, 2014–2022. El sufijo `+20` se lee como sobremedida de 0.50 mm (+0.020 in); Safety no publica esa medida en la línea del catálogo y queda anotada como tal. No hubo intercambios confirmados. Fuente: catálogo web de Safety Auto Parts.
+
+**FSX-5840301.** Juego de empaques Fraco. Fraco publica la ficha como `FS5840301`; el Excel escribe `FSX-5840301`. Entra en Nissan 240SX, Silvia, Pathfinder, Pick Up D21, Terrano II y Vanette con motor KA24E 2.4 L. El intercambio confirmado es TF Victor `JC-20`. Atributos de la ficha: diámetro 89 mm, cilindrada 2389 cc, calibre de empaque de culata 1.3 mm, 12 válvulas, distribución SOHC. Fuentes: ficha PDF de Fraco y Dacomsa.
+
+### Números que no se publican
+
+| Pieza | Token en el Excel | Motivo |
+|---|---|---|
+| TK1283-1 | SA-76260 | Fenix publica `76260` de GEAR, no el texto `SA-76260` |
+| SP26-329R/L+20 | 83-301 | No se confirmó como número de esta pieza |
+| FSX-5840301 | QJC20G | No se confirmó en una ficha de esta pieza |
+| FSX-5840301 | FS-001225 | No se confirmó en una ficha de esta pieza |
+
+## Alcance de la aplicación
+
+La aplicación investiga cada fila cuyo símil todavía no está en la refaccionaria, guarda el resultado y, al publicar, solo lee lo guardado.
+
+La primera vez que aparece un símil:
+
+1. Lee la hoja Origen del Excel.
+2. Separa el símil de la frase.
+3. Busca la página con Serper, la descarga y lee sus tablas. Si las tablas no alcanzan, una llamada a `gpt-6.1-sol` en effort medium reescribe ese texto.
+4. Guarda la ficha y la pieza. Si encontró página, el estado queda en `created`. Si la búsqueda respondió y no hubo página, la ficha queda en `not_found`, con las listas vacías. Si Serper o el modelo no responden, el código de esa investigación reintenta hasta tres veces. Si las tres fallan, la ficha queda vacía, en `failed`.
+
+Publicar no entra a internet. Lee el Excel de nuevo para la hoja Origen, lee las tablas para el resto y escribe el archivo. La segunda corrida del mismo archivo, en la misma refaccionaria, encuentra el símil guardado y no vuelve a buscar, tampoco cuando el estado quedó en `failed`. Por eso las dos salen igual.
+
+Si no hay página, o si la comunicación falló las tres veces, la fila se copia en Origen y no genera filas de catálogo, aplicaciones, intercambios ni atributos. La aplicación no copia la ficha de una pieza parecida.
+
+## Qué se guarda y qué se calcula
+
+El Excel resultante y las secciones de la aplicación son la misma vista: las fichas de la refaccionaria ya armadas. Cada ficha (`datasheets`) se une con sus `parts`, `applications`, `interchanges` y `attributes`. El catálogo guarda el hecho una sola vez. La pantalla y el archivo muestran esa unión.
+
+Se guarda, en la ficha, una vez por símil dentro de la refaccionaria:
+
+- Cada vehículo compatible, con el año como rango (`año inicial`, `año final`), no como un renglón por año.
+- Cada número equivalente, con su marca y su procedencia.
+- Cada medida, con clase, nombre, unidad y valor.
+
+Se guarda, en la pieza, una vez por referencia y frase:
+
+- Marca, categoría, sistema, subsistema, producto y descripción.
+- Los códigos de la frase que la página no confirmó.
+
+Al armar esa vista, para la pantalla y para el Excel, se calcula:
+
+- Una fila por cada año de una vigencia cerrada. Nissan D21 1986–1994 produce nueve filas, del 1986 al 1994, con el resto de las columnas repetidas.
+- Marca y producto repetidos en Aplicaciones, Intercambios y Atributos. Viven una sola vez en la pieza y se copian al publicar.
+- CC y CID se copian en cada año. Viajan con la aplicación porque son el desplazamiento real del motor. En el ejemplo, 2.5 L corresponde a 2,488 cc y 152 CID; no se obtienen multiplicando los litros por mil.
+- La hoja Origen, que es el archivo subido, escrito de vuelta igual. Código interno, texto libre, grupo y unidad pertenecen a esa línea.
+- Métricas, que cuenta el archivo ya armado. No hay una tabla de métricas.
+
+El orden de las filas sigue el orden del catálogo y, dentro de cada vigencia, el año va de menor a mayor.
+
+Cuando la ficha no trae submodelo, mercado, cc, cid, bloque, combustible o posición, la celda queda vacía. No se inventan. Posición, en este catálogo, va vacía. El submodelo sí se guarda cuando existe, porque un mismo modelo puede cambiar de versiones según el año: el NP300 del ejemplo no trae las mismas versiones en 2016 que en 2017.
+
+`HL-7025S` no tiene año final. Elgin publicó “desde 2007” y “desde 2019” para una familia de motor. Esa vigencia abierta se publica como una sola fila, con el año inicial y el modelo tal como está guardado (`Motores LS con AFM`, `Motores LT EcoTec3 con DFM`). No se inventan camionetas ni años posteriores. El texto “desde 2007” y “desde 2019” queda en la descripción de la pieza.
+
+## Lenguaje de dominio
+
+La lógica de negocio habla de cuatro conjuntos. En el Excel publicado, la pieza es la raíz: cada fila de Aplicaciones, Intercambios y Atributos lleva su referencia, su marca y su producto. En la base de datos, esas tres listas pertenecen a la ficha del símil y varias piezas pueden compartirlas. Al publicar se vuelven a unir.
+
+### Pieza
+
+Fila comercial de la refaccionaria.
+
+| Concepto | Significado | Dónde se publica |
+|---|---|---|
+| Referencia | Número de parte de la refaccionaria | Referencia, en todas las hojas |
+| Marca | Quién fabrica la refacción: Rexite, Fraco, Elgin | Marca |
+| Categoría | Línea comercial. Aquí, Vehículo ligero | Categoría |
+| Sistema | Sistema del vehículo. Aquí, Motor | Sistema |
+| Subsistema | Familia dentro del sistema | Subsistema |
+| Producto | Nombre publicable de la pieza | Producto |
+| Descripción | Párrafo comercial en español | Descripción |
+
+### Aplicación
+
+Un vehículo en el que la pieza entra, durante una vigencia.
+
+| Concepto | Significado | Dónde se publica |
+|---|---|---|
+| Fabricante | Marca del vehículo: Nissan, Chevrolet, Jeep | Fabricante |
+| Modelo | Silverado, Pathfinder, Wrangler | Modelo |
+| Submodelo | Versión. Puede ir vacío | Submodelo |
+| Vigencia | Año inicial y año final, inclusive | Año, una fila por año |
+| Litros | Desplazamiento comercial | Litros |
+| CC | Centímetros cúbicos del motor | CC |
+| CID | Pulgadas cúbicas del motor | CID |
+| Cilindros | Número de cilindros | Cilindros |
+| Bloque | Disposición: L, V | Bloque |
+| Combustible | Gasolina, diésel | Combustible |
+| Mercado | MEX o USA | Mercado |
+| Posición | Lugar de la pieza en el vehículo | Posición |
+
+Una aplicación se distingue por fabricante, modelo, submodelo, mercado, motor y vigencia. El mismo modelo con otra versión, u otro mercado, es otra aplicación.
+
+**Marca** es la marca de la refacción. **Fabricante** es la marca del vehículo. No se intercambian.
+
+### Intercambio
+
+Otro número con el que se pide la misma pieza.
+
+| Concepto | Significado | Dónde se publica |
+|---|---|---|
+| Número | El otro número de parte | Intercambio |
+| Marca | Marca de ese número | Marca intercambio |
+| Procedencia | Aftermarket u OEM | Columna Origen de Intercambios |
+
+Se distingue por número y marca. `DM-152` de Dynagear y `DM-152` de Federated son dos intercambios. Una pieza puede no tener ninguno. En el dominio se dice procedencia para no confundirla con la hoja Origen.
+
+### Atributo
+
+Una medida o característica de la pieza.
+
+| Concepto | Significado | Dónde se publica |
+|---|---|---|
+| Clase | Familia de la medida: Altura, Material, Tipo | Clase |
+| Nombre | La medida concreta | Atributo |
+| Unidad | mm, L, in. Puede ir vacía | Unidad |
+| Valor | 154, Acero, Sí | Valor |
+
+Se distingue por clase y nombre. La misma clase puede repetirse con nombres distintos.
+
+### Publicar un catálogo
+
+Es la operación que arma las fichas con sus tablas relacionadas. Recibe las líneas del archivo de entrada y, por cada fila de Origen, busca la pieza por su huella: referencia y frase. De ahí salen el Excel resultante y las secciones de la aplicación.
+
+1. La línea de entrada se escribe tal cual en Origen.
+2. La pieza encontrada publica una fila en Catálogo.
+3. Cada aplicación se despliega por año.
+4. Cada intercambio publica una fila.
+5. Cada atributo publica una fila.
+6. Al terminar se cuentan las filas. Eso es Métricas.
+
+Publicar dos veces el mismo archivo produce las mismas filas en el mismo orden.
+
+Fuentes, notas de investigación y tokens no confirmados no forman parte de los cuatro conjuntos. Un número no confirmado no es un intercambio.
+
+## Modelado de datos
+
+En la base de datos, las tres listas no se copian en cada pieza. Cuelgan de una **ficha** (`datasheets`), guardada una vez por símil dentro de la refaccionaria. La **pieza** (`parts`) es la fila de la refaccionaria y apunta a esa ficha con `datasheet_id`. Varias piezas de la misma refaccionaria pueden compartir la misma ficha: doscientas filas con `DM-152` leen las mismas aplicaciones, intercambios y atributos.
+
+La refaccionaria es `parts_stores`. Cada ficha pertenece a una, y una refaccionaria tiene muchas fichas. El usuario es `users`. Un usuario gestiona muchas refaccionarias, y cada refaccionaria pertenece a un solo usuario.
+
+```mermaid
+erDiagram
+  USERS ||--o{ PARTS_STORES : has
+  PARTS_STORES ||--o{ DATASHEETS : has
+  DATASHEETS ||--o{ APPLICATIONS : has
+  DATASHEETS ||--o{ INTERCHANGES : has
+  DATASHEETS ||--o{ ATTRIBUTES : has
+  DATASHEETS ||--o{ PARTS : has
+```
+
+`parts` guarda la referencia de la refaccionaria. `datasheets` guarda lo que se investigó del símil. `parts_stores` guarda quién vende esas piezas. `users` guarda quién gestiona cada refaccionaria. Al publicar, Catálogo sale de la pieza. Aplicaciones, Intercambios y Atributos salen de la ficha, y en cada fila se copian la marca y el producto de la pieza. Esa unión es el Excel resultante y las secciones de la aplicación. Origen se vuelve a leer del Excel subido. Métricas se cuenta al armar la vista.
+
+### `users`
+
+Una fila por persona que entra a la aplicación.
+
+| Columna | Qué guarda |
+|---|---|
+| id | Identificador |
+| email | Correo con el que se identifica, único |
+
+### `parts_stores`
+
+Una fila por refaccionaria. Es la tienda de autopartes: quien sube el Excel y a cuyo nombre se publica el catálogo.
+
+| Columna | Qué guarda |
+|---|---|
+| id | Identificador |
+| user_id | Usuario que la gestiona. Una refaccionaria pertenece a un solo usuario |
+| name | Nombre comercial. Ejemplo: Refaccionaria Trópico de Cáncer |
+
+### `datasheets`
+
+Una fila por símil dentro de la refaccionaria. El código buscado identifica la ficha de esa refaccionaria. El tipo de pieza entra en la consulta y no forma parte de la llave. Es lo caro de conseguir, así que no se repite por cada número de parte de la misma refaccionaria.
+
+| Columna | Qué guarda |
+|---|---|
+| id | Identificador |
+| parts_store_id | Refaccionaria dueña de la ficha |
+| simil | Código buscado. Único junto con `parts_store_id`. Ejemplo: `DM-152` |
+| url | Página de donde se leyeron las listas |
+| estado | `created`, `not_found` o `failed` |
+
+`created` significa que la página se encontró y la ficha quedó generada. `not_found` significa que la búsqueda respondió y no hubo página: la ficha se guarda vacía y no se reintenta, porque la ausencia ya es la respuesta. `failed` significa que Serper o el modelo no respondieron. El conteo de esos intentos vive en el código de la investigación, no en una columna: se prueba hasta tres veces en la misma corrida. Si las tres fallan, la ficha se guarda vacía con `failed`. La siguiente corrida encuentra esa fila y no vuelve a llamar. La siguiente fila con ese símil, en la misma refaccionaria, tampoco vuelve a buscar. Dos refaccionarias pueden investigar el mismo símil: cada una guarda su ficha.
+
+### `parts`
+
+Una fila por número de parte y frase del Excel. La huella es esa pareja, normalizada.
+
+| Columna | Qué guarda |
+|---|---|
+| id | Identificador |
+| datasheet_id | Ficha del símil. Varias piezas pueden apuntar a la misma |
+| referencia | Número de parte de la refaccionaria. Ejemplo: `RM-152` |
+| frase | Descripción libre del Excel |
+| huella | Referencia más frase, única entre las piezas de la misma refaccionaria |
+| marca | Marca de la refacción. Ejemplo: Rexite |
+| grupo | Grupo de artículos del Excel |
+| categoria | Línea comercial. Ejemplo: Vehículo ligero |
+| sistema | Ejemplo: MOTOR |
+| subsistema | Ejemplo: BOMBAS |
+| producto | Nombre publicable |
+| descripcion | Párrafo comercial en español, armado una vez |
+| tokens_no_confirmados | Códigos de la frase que la página no confirmó. No se publican |
+
+### `applications`
+
+Una fila por vehículo, con el año en rango. Pertenece a una ficha.
+
+| Columna | Qué guarda |
+|---|---|
+| id | Identificador |
+| datasheet_id | Ficha a la que pertenece |
+| orden | Lugar de la fila al publicar. Único junto con `datasheet_id` |
+| fabricante | Marca del vehículo. Ejemplo: Nissan |
+| modelo | Ejemplo: D21 |
+| submodelo | Versión. Puede ir vacía |
+| anio_inicial | Primer año de la vigencia |
+| anio_final | Último año. Vacío si la vigencia está abierta |
+| litros | Desplazamiento comercial |
+| cc | Centímetros cúbicos del motor |
+| cid | Pulgadas cúbicas del motor |
+| cilindros | Número de cilindros |
+| bloque | Disposición: L, V |
+| combustible | Gasolina, diésel |
+| mercado | MEX o USA |
+| posicion | Lugar de la pieza en el vehículo. Puede ir vacía |
+
+Al escribir Aplicaciones, el rango 1986–1994 se abre en una fila por año. Esas filas de un solo año no se guardan.
+
+### `interchanges`
+
+Una fila por número equivalente. Pertenece a una ficha.
+
+| Columna | Qué guarda |
+|---|---|
+| id | Identificador |
+| datasheet_id | Ficha a la que pertenece |
+| orden | Lugar de la fila al publicar. Único junto con `datasheet_id` |
+| numero | El otro número de parte |
+| marca | Marca de ese número |
+| procedencia | `Aftermarket` u `OEM`. En el Excel la columna se llama Origen |
+
+`DM-152` de Dynagear y `DM-152` de Federated son dos filas. Se distinguen por número y marca.
+
+### `attributes`
+
+Una fila por medida. Pertenece a una ficha.
+
+| Columna | Qué guarda |
+|---|---|
+| id | Identificador |
+| datasheet_id | Ficha a la que pertenece |
+| orden | Lugar de la fila al publicar. Único junto con `datasheet_id` |
+| clase | Familia de la medida. Ejemplo: Altura, Material |
+| nombre | La medida concreta |
+| unidad | mm, L, in. Puede ir vacía |
+| valor | 154, Acero, Sí |
+
+La misma clase puede repetirse con nombres distintos.
+
+### Qué no tiene tabla
+
+- El HTML de la página y la respuesta de Serper. Ya quedaron resumidos en la ficha.
+- Una fila por cada año del rango.
+- Marca y producto copiados en cada aplicación, intercambio o atributo. Se leen de `parts` al publicar.
+- Métricas. Son el conteo del Excel ya escrito.
+- Código interno, unidad y texto libre como columnas propias. Viajan en el archivo de entrada y se copian a la hoja Origen.
+
+## Aproximación de Rails
+
+La lógica vive en un solo objeto, fuera del controlador. Lo usan un comando y una página.
+
+- `bin/rails catalog:build` recibe la ruta del Excel de origen y la refaccionaria, y escribe el de salida. Con ese comando se comprueba que dos corridas de la misma refaccionaria tienen el mismo contenido, hoja por hoja.
+- Una página sube el Excel de una refaccionaria, deja revisar el resultado y devuelve el archivo generado. El usuario que entra gestiona una o varias refaccionarias.
+
+Para leer el Excel de origen se usa Roo. Para escribir el de salida, caxlsx. El intérprete local es Ruby 4.0.0. Las dos gemas cargan en esa versión.
+
+**Roo** lee `.xlsx`. La 4.0.0, del 22 de octubre de 2026, pide Ruby 3.3 o más nuevo. Su CI incluye 3.3, 3.4, 4.0, ruby-head y jruby-10. En el issue [#649](https://github.com/roo-rb/roo/issues/649), del 25 de octubre de 2026, la suite completa pasó en Ruby 4.0.9: 177 pruebas de Minitest y 253 de RSpec. Al cargar avisa, porque Ruby 4 sacó CGI de la biblioteca estándar y Roo todavía hace `require "cgi"` para `CGI.unescapeHTML`. El aviso no impide leer el archivo. Hay un arreglo abierto que propone `cgi/escape`.
+
+**caxlsx** escribe el Excel de seis hojas. Hay que usar la **4.4.2** o una posterior. Esa versión salió el 23 de marzo de 2026 e incluye el pull request [#500](https://github.com/caxlsx/caxlsx/pull/500), «Add full Ruby 4.0 support». Ahí probaron el proyecto en Ruby 4.0.0 y cambiaron el `require` de `cgi` a `cgi/escape`, porque la gema solo usa `CGI.escapeHTML`. Con eso evitaron el aviso que Roo todavía muestra. El CI actual, en [`.github/workflows/test.yml`](https://github.com/caxlsx/caxlsx/blob/master/.github/workflows/test.yml), corre las pruebas en Ruby 4.0 en Ubuntu, macOS y Windows. El requisito publicado sigue siendo Ruby 2.6 o más nuevo. Una versión anterior puede cargar en Ruby 4 y dejar el aviso de `CGI`.
+
+La base de datos es Postgres, con las tablas de la sección Modelado de datos. Publicar lee esas tablas y arma las fichas con sus tablas relacionadas. Esa vista es la pantalla y el Excel resultante. No hay un archivo de catálogo que la aplicación cargue en cada corrida.
+
+La búsqueda usa Serper. La lectura de la página la hace código. `gpt-6.1-sol` en effort medium entra solo cuando esa lectura no obtiene listas. La clave va en `OPENAI_API_KEY`.
+
+### Métricas de una pieza desconocida
+
+Además del cuadro del ejemplo, conviene mostrar cuántas referencias del Excel no tenían ficha. Así un archivo distinto no parece un catálogo terminado cuando solo se catalogó una parte. El cuadro del ejemplo se conserva: Referencias, y para aplicaciones, intercambios y atributos, Origen en 0 e Incrementos igual al total generado.
+
+## Pantalla
+
+El wireframe es una sola pantalla.
+
+- Arriba: “Bonaparte App” y el botón “Upload data”.
+- Después: el nombre de la refaccionaria, en el dibujo “Refaccionaria trópico de cancer”, y el botón “Download Excel”. Ese nombre es `parts_stores.name`.
+- Pestañas para revisar el resultado: Origen, Métricas, Aplicaciones e Intercambios. La pestaña activa del dibujo es Origen, y por eso se ve más grande. La tabla de abajo muestra esa hoja.
+- Al cambiar de pestaña cambian las columnas, porque cada pestaña es una sección de la aplicación y una hoja del Excel. Catálogo, Aplicaciones, Intercambios y Atributos muestran la ficha unida con `parts`, `applications`, `interchanges` y `attributes`. Origen muestra el archivo subido. Métricas cuenta esa vista.
+
+Ajustes acordados sobre el dibujo:
+
+- Las columnas de Origen son código interno, número de parte, descripción del artículo, descripción, grupo de artículos, fabricante y unidad. En el dibujo falta el código interno, la descripción larga y la unidad, y sobra una primera columna llamada Origen.
+- Faltan las pestañas Atributos y Catálogo.
+- Métricas no es una tabla de piezas. Es el cuadro de conteos.
+
+Con esos ajustes, la pantalla ya se puede construir: subir el Excel, revisar el resultado por hojas y descargarlo.
+
+
+## Estado de este repositorio
+
+Hecho:
+
+- Investigación de las cinco piezas del archivo de datos, resumida en este documento.
+- El modelado de la base de datos: `users`, `parts_stores`, `datasheets`, `parts`, `applications`, `interchanges` y `attributes`.
+- Este documento de alcance.
+
+Pendiente:
+
+- Crear la aplicación Rails.
+- El objeto que publica el catálogo con los cuatro conjuntos.
+- La lectura con Roo y la escritura con caxlsx, con las seis hojas y las columnas del ejemplo.
+- El comando `bin/rails catalog:build`.
+- La página del wireframe, con los ajustes de columnas y pestañas.
+- La prueba de dos generaciones del mismo `data_prueba_técnica.xlsx` con el mismo contenido, hoja por hoja.
+- Crear las tablas del modelado y guardar ahí el resultado de cada investigación.
