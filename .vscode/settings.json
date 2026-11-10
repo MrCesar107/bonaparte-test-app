@@ -1,0 +1,9 @@
+{
+  "rubocop.bundleCommandPath": "${userHome}/.rbenv/shims/bundle",
+  "[ruby]": {
+    "editor.defaultFormatter": "rubocop.vscode-rubocop"
+  },
+  "rubyLsp.rubyVersionManager": {
+    "identifier": "rbenv"
+  }
+}
