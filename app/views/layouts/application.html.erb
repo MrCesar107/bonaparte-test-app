@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html class="h-full">
   <head>
     <title><%= content_for(:title) || "Bonaparte Techincal Test App" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -23,9 +23,9 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body>
+  <body class="flex min-h-full flex-col">
     <%= render "shared/navbar" %>
-    <main class="container mx-auto mt-28 px-5 flex">
+    <main class="flex flex-1 flex-col">
       <%= yield %>
     </main>
   </body>
