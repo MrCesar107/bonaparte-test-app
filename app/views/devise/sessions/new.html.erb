@@ -4,10 +4,11 @@
       <h1 class="text-2xl font-bold text-center mb-3">Log in</h1>
       <p class="text-center text-slate-500 mb-10">Sign in to your account</p>
       <div class="w-full">
-        <%= simple_form_for resource, as: resource_name, url: session_path(resource_name), html: { class: "flex flex-col gap-8" } do |f| %>
-          <%= f.error_notification %>
-          <%= f.input :email, required: true, autofocus: true, placeholder: "Enter your email", label: "Email", wrapper_html: { class: "flex flex-col gap-1.5" }, input_html: { class: "w-full p-2 rounded-md border-2 border-slate-300 bg-white" } %>
-          <%= f.input :password, required: true, placeholder: "Enter your password", label: "Password", wrapper_html: { class: "flex flex-col gap-1.5" }, input_html: { class: "w-full p-2 rounded-md border-2 border-slate-300 bg-white" } %>
+        <% invalid_field_classes = "[&.invalid_label]:font-medium [&.invalid_label]:text-red-600 [&.invalid_input]:border-red-600" %>
+        <%= simple_form_for resource, as: resource_name, url: session_path(resource_name), html: { class: "flex flex-col gap-8" }, defaults: { error_html: { class: "block text-sm text-red-600" }, wrapper_error_class: "field_with_errors invalid" } do |f| %>
+          <%= f.error_notification class: "rounded-md bg-red-50 px-3 py-2 text-sm text-red-600" %>
+          <%= f.input :email, required: true, autofocus: true, placeholder: "Enter your email", label: "Email", wrapper_html: { class: "flex flex-col gap-1.5 #{invalid_field_classes}" }, input_html: { class: "w-full p-2 rounded-md border-2 border-slate-300 bg-white" } %>
+          <%= f.input :password, required: true, placeholder: "Enter your password", label: "Password", wrapper_html: { class: "flex flex-col gap-1.5 #{invalid_field_classes}" }, input_html: { class: "w-full p-2 rounded-md border-2 border-slate-300 bg-white" } %>
           <% if devise_mapping.rememberable? %>
             <%= f.input :remember_me, as: :boolean, wrapper_html: { class: "flex" }, label_html: { class: "flex items-center gap-2" } %>
           <% end %>

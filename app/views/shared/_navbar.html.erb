@@ -5,5 +5,12 @@
         <%= image_tag "logo.svg", alt: "Bonaparte", class: "w-auto h-8" %>
       <% end %>
     </div>
+    <div>
+      <% if user_signed_in? %>
+        <%= button_to "Logout", destroy_user_session_path, method: :delete, data: { turbo_method: :delete }, class: "text-slate-500 hover:text-slate-600 cursor-pointer" %>
+      <% else %>
+        <%= link_to "Login", new_user_session_path, class: "text-slate-500 hover:text-slate-600" %>
+      <% end %>
+    </div>
   </div>
 </nav>
