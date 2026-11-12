@@ -8,7 +8,7 @@ class CreateParts < ActiveRecord::Migration[8.1]
       t.string :brand
       t.string :item_group
       t.string :category
-      t.string :system
+      t.string :vehicle_system
       t.string :subsystem
       t.string :product
       t.string :description
