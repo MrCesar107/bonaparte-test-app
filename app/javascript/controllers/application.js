@@ -7,3 +7,8 @@ application.debug = false
 window.Stimulus   = application
 
 export { application }
+
+import { Modal, Tabs, Alert } from "tailwindcss-stimulus-components";
+application.register("modal", Modal);
+application.register("tabs", Tabs);
+application.register("alert", Alert);

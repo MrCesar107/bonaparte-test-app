@@ -1,0 +1,50 @@
+<%#
+  Modal dialog driven by the Modal controller from tailwindcss-stimulus-components.
+
+  render layout: "shared/modal", locals: { title:, trigger_text: } do ... end
+
+  Locals: title, trigger_text, trigger_class, trigger, open, size (:sm, :md, :lg), id, dialog_class.
+  A custom trigger must include data-action="modal#open" so it stays inside this controller.
+%>
+<%
+  sizes = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl" }
+  size_class = sizes.fetch(local_assigns.fetch(:size, :md).to_sym, sizes[:md])
+  modal_id = local_assigns[:id].presence || "modal-#{SecureRandom.hex(4)}"
+  title = local_assigns[:title].presence
+  title_id = "#{modal_id}-title"
+  trigger_class = local_assigns[:trigger_class].presence || "bg-orange-400 hover:bg-orange-500 cursor-pointer text-white px-4 py-2 rounded-full"
+  dialog_classes = [
+    "modal-dialog m-auto w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-left text-slate-900 shadow-xl backdrop:bg-slate-900/50",
+    size_class,
+    local_assigns[:dialog_class].presence
+  ].compact.join(" ")
+%>
+<%= tag.div data: { controller: "modal", modal_open_value: local_assigns[:open].present? }, class: "inline-flex" do %>
+  <% if local_assigns[:trigger].present? %>
+    <%= trigger %>
+  <% elsif (trigger_text = local_assigns[:trigger_text].presence) %>
+    <button type="button" class="<%= trigger_class %>" data-action="modal#open"><%= trigger_text %></button>
+  <% end %>
+
+  <%= tag.dialog id: modal_id,
+        class: dialog_classes,
+        data: { modal_target: "dialog", action: "click->modal#backdropClose cancel->modal#close:prevent" },
+        aria: ({ labelledby: title_id } if title) do %>
+    <div class="flex max-h-[calc(100dvh-2rem)] flex-col">
+      <div class="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
+        <% if title %>
+          <h2 id="<%= title_id %>" class="text-lg font-bold"><%= title %></h2>
+        <% end %>
+        <button type="button"
+                class="ml-auto inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                data-action="modal#close"
+                aria-label="Close">
+          <%= fa_icon(:xmark) %>
+        </button>
+      </div>
+      <div class="overflow-y-auto px-5 py-4">
+        <%= yield %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

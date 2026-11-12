@@ -11,6 +11,29 @@ RSpec.describe "User session", type: :request do
       expect(response.body).not_to include('data-controller="hint"')
       expect(response.body).not_to include("6 characters minimum")
       expect(response.body).to include("Remember me")
+      expect(response.body).not_to include('data-controller="alert"')
+    end
+  end
+
+  describe "POST /users/sign_in" do
+    it "shows the controller notice in the alert component" do
+      user = User.create!(
+        first_name: "Ada",
+        last_name: "Lovelace",
+        email: "ada-alert@example.com",
+        password: "password123",
+        password_confirmation: "password123"
+      )
+
+      post user_session_path, params: { user: { email: user.email, password: "password123" } }
+
+      expect(response).to redirect_to(root_path)
+      follow_redirect!
+
+      expect(response.body).to include("Signed in successfully.")
+      expect(response.body).to include('data-controller="alert"')
+      expect(response.body).to include('data-action="alert#close"')
+      expect(response.body).to include("bg-emerald-50")
     end
   end
 end

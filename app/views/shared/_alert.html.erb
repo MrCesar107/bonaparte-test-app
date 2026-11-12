@@ -1,0 +1,41 @@
+<%#
+  Toast driven by the Alert controller from tailwindcss-stimulus-components.
+
+  render "shared/alert", type: :notice, message: "Saved."
+
+  Locals: message, type (:notice, :success, :alert, :error), dismiss_after, show_delay.
+%>
+<%
+  type = local_assigns.fetch(:type, :notice).to_s
+  styles = {
+    "notice" => "border-emerald-200 bg-emerald-50 text-emerald-800",
+    "success" => "border-emerald-200 bg-emerald-50 text-emerald-800",
+    "alert" => "border-red-200 bg-red-50 text-red-700",
+    "error" => "border-red-200 bg-red-50 text-red-700"
+  }
+  alert_data = {
+    controller: "alert",
+    transition_enter: "transition duration-300 ease-out",
+    transition_enter_from: "opacity-0 translate-y-2",
+    transition_enter_to: "opacity-100 translate-y-0",
+    transition_leave: "transition duration-200 ease-in",
+    transition_leave_from: "opacity-100 translate-y-0",
+    transition_leave_to: "opacity-0 translate-y-2",
+    toggle_class: "hidden"
+  }
+  alert_data[:alert_dismiss_after_value] = local_assigns[:dismiss_after] if local_assigns[:dismiss_after].present?
+  alert_data[:alert_show_delay_value] = local_assigns[:show_delay] if local_assigns[:show_delay].present?
+%>
+<%= tag.div data: alert_data,
+      role: (%w[alert error].include?(type) ? "alert" : "status"),
+      class: "pointer-events-auto hidden w-full rounded-lg border px-4 py-3 text-sm shadow-lg #{styles.fetch(type, "border-slate-200 bg-white text-slate-700")}" do %>
+  <div class="flex items-start gap-3">
+    <p class="min-w-0 flex-1 font-medium"><%= message %></p>
+    <button type="button"
+            class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-black/5"
+            data-action="alert#close"
+            aria-label="Dismiss">
+      <%= fa_icon(:xmark) %>
+    </button>
+  </div>
+<% end %>

@@ -1,0 +1,6 @@
+<h1 class="text-3xl font-bold">New Part Store</h1>
+<div class="mt-8 max-w-lg">
+  <%= turbo_frame_tag "part_store_form" do %>
+    <%= render "form", part_store: @part_store %>
+  <% end %>
+</div>

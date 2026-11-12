@@ -1,1 +1,29 @@
 @import "tailwindcss";
+
+/* Leave animation for tailwindcss-stimulus-components Modal.
+   close() sets [closing] and waits for animations on the dialog. */
+@keyframes modal-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(0.25rem) scale(0.98);
+  }
+}
+
+@keyframes modal-backdrop-leave {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+dialog.modal-dialog[closing] {
+  animation: modal-leave 150ms ease-in forwards;
+}
+
+dialog.modal-dialog[closing]::backdrop {
+  animation: modal-backdrop-leave 150ms ease-in forwards;
+}
+

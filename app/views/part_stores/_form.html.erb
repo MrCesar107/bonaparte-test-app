@@ -1,0 +1,6 @@
+<% invalid_field_classes = "[&.invalid_label]:font-medium [&.invalid_label]:text-red-600 [&.invalid_input]:border-red-600" %>
+<%= simple_form_for part_store, html: { id: dom_id(part_store), class: "flex flex-col gap-8", novalidate: true }, defaults: { error_html: { class: "block text-sm text-red-600" }, wrapper_error_class: "field_with_errors invalid" } do |f| %>
+  <%= f.error_notification class: "rounded-md bg-red-50 px-3 py-2 text-sm text-red-600" %>
+  <%= f.input :name, required: true, autofocus: true, label: "Name", placeholder: "Enter the part store name", wrapper_html: { class: "flex flex-col gap-1.5 #{invalid_field_classes}" }, input_html: { class: "w-full p-2 rounded-md border-2 border-slate-300 bg-white" } %>
+  <%= f.button :submit, "Create Part Store", class: "w-full bg-orange-400 hover:bg-orange-500 cursor-pointer rounded-full text-white p-2" %>
+<% end %>

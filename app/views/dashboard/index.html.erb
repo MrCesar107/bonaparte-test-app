@@ -1,0 +1,20 @@
+<div class="flex justify-between items-center">
+  <div class="flex flex-col">
+    <h1 class="text-3xl font-bold">Welcome <%= current_user.first_name %></h1>
+  </div>
+  <div class="flex flex-row">
+    <%= render layout: "shared/modal", locals: { title: "New Part Store", trigger: link_to("New Part Store", new_part_store_path, class: "bg-orange-400 hover:bg-orange-500 cursor-pointer text-white px-4 py-2 rounded-full", data: { turbo_frame: "part_store_form", action: "modal#open" }) } do %>
+      <%= turbo_frame_tag "part_store_form" %>
+    <% end %>
+  </div>
+</div>
+<p class="text-gray-500 mt-3">Here you can manage your parts stores</p>
+<div class="grid grid-cols-4 gap-4 my-10">
+  <% @part_stores.each do |part_store| %>
+    <%= link_to part_store_path(part_store) do %>  
+      <div class="bg-white p-4 rounded-md border border-gray-200">
+        <h2 class="text-lg font-bold"><%= part_store.name %></h2>
+      </div>
+    <% end %>
+  <% end %>
+</div>

@@ -1,0 +1,10 @@
+<% messages = flash.flat_map { |type, message| Array(message).filter_map { |text| [ type, text ] if text.present? } } %>
+<% if messages.any? %>
+  <div class="pointer-events-none fixed inset-x-0 top-20 z-[60] flex justify-end px-5">
+    <div class="flex w-full max-w-sm flex-col gap-3">
+      <% messages.each do |type, text| %>
+        <%= render "shared/alert", type: type, message: text %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
