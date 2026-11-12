@@ -286,9 +286,9 @@ Una fila por símil dentro de la refaccionaria. El código buscado identifica la
 |---|---|
 | id | Identificador |
 | parts_store_id | Refaccionaria dueña de la ficha |
-| simil | Código buscado. Único junto con `parts_store_id`. Ejemplo: `DM-152` |
+| equivalent | Código buscado. Único junto con `parts_store_id`. Ejemplo: `DM-152` |
 | url | Página de donde se leyeron las listas |
-| estado | `created`, `not_found` o `failed` |
+| status | `created`, `not_found` o `failed` |
 
 `created` significa que la página se encontró y la ficha quedó generada. `not_found` significa que la búsqueda respondió y no hubo página: la ficha se guarda vacía y no se reintenta, porque la ausencia ya es la respuesta. `failed` significa que Serper o el modelo no respondieron. El conteo de esos intentos vive en el código de la investigación, no en una columna: se prueba hasta tres veces en la misma corrida. Si las tres fallan, la ficha se guarda vacía con `failed`. La siguiente corrida encuentra esa fila y no vuelve a llamar. La siguiente fila con ese símil, en la misma refaccionaria, tampoco vuelve a buscar. Dos refaccionarias pueden investigar el mismo símil: cada una guarda su ficha.
 
@@ -300,17 +300,17 @@ Una fila por número de parte y frase del Excel. La huella es esa pareja, normal
 |---|---|
 | id | Identificador |
 | datasheet_id | Ficha del símil. Varias piezas pueden apuntar a la misma |
-| referencia | Número de parte de la refaccionaria. Ejemplo: `RM-152` |
-| frase | Descripción libre del Excel |
-| huella | Referencia más frase, única entre las piezas de la misma refaccionaria |
-| marca | Marca de la refacción. Ejemplo: Rexite |
-| grupo | Grupo de artículos del Excel |
-| categoria | Línea comercial. Ejemplo: Vehículo ligero |
-| sistema | Ejemplo: MOTOR |
-| subsistema | Ejemplo: BOMBAS |
-| producto | Nombre publicable |
-| descripcion | Párrafo comercial en español, armado una vez |
-| tokens_no_confirmados | Códigos de la frase que la página no confirmó. No se publican |
+| reference | Número de parte de la refaccionaria. Ejemplo: `RM-152` |
+| phrase | Descripción libre del Excel |
+| fingerprint | Referencia más frase, única entre las piezas de la misma refaccionaria |
+| brand | Marca de la refacción. Ejemplo: Rexite |
+| item_group | Grupo de artículos del Excel |
+| category | Línea comercial. Ejemplo: Vehículo ligero |
+| system | Ejemplo: MOTOR |
+| subsystem | Ejemplo: BOMBAS |
+| product | Nombre publicable |
+| description | Párrafo comercial en español, armado una vez |
+| unconfirmed_tokens | Códigos de la frase que la página no confirmó. No se publican |
 
 ### `applications`
 
@@ -320,20 +320,20 @@ Una fila por vehículo, con el año en rango. Pertenece a una ficha.
 |---|---|
 | id | Identificador |
 | datasheet_id | Ficha a la que pertenece |
-| orden | Lugar de la fila al publicar. Único junto con `datasheet_id` |
-| fabricante | Marca del vehículo. Ejemplo: Nissan |
-| modelo | Ejemplo: D21 |
-| submodelo | Versión. Puede ir vacía |
-| anio_inicial | Primer año de la vigencia |
-| anio_final | Último año. Vacío si la vigencia está abierta |
-| litros | Desplazamiento comercial |
+| sort_order | Lugar de la fila al publicar. Único junto con `datasheet_id` |
+| manufacturer | Marca del vehículo. Ejemplo: Nissan |
+| model | Ejemplo: D21 |
+| submodel | Versión. Puede ir vacía |
+| start_year | Primer año de la vigencia |
+| end_year | Último año. Vacío si la vigencia está abierta |
+| liters | Desplazamiento comercial |
 | cc | Centímetros cúbicos del motor |
 | cid | Pulgadas cúbicas del motor |
-| cilindros | Número de cilindros |
-| bloque | Disposición: L, V |
-| combustible | Gasolina, diésel |
-| mercado | MEX o USA |
-| posicion | Lugar de la pieza en el vehículo. Puede ir vacía |
+| cylinders | Número de cilindros |
+| block | Disposición: L, V |
+| fuel | Gasolina, diésel |
+| market | MEX o USA |
+| position | Lugar de la pieza en el vehículo. Puede ir vacía |
 
 Al escribir Aplicaciones, el rango 1986–1994 se abre en una fila por año. Esas filas de un solo año no se guardan.
 
@@ -345,10 +345,10 @@ Una fila por número equivalente. Pertenece a una ficha.
 |---|---|
 | id | Identificador |
 | datasheet_id | Ficha a la que pertenece |
-| orden | Lugar de la fila al publicar. Único junto con `datasheet_id` |
-| numero | El otro número de parte |
-| marca | Marca de ese número |
-| procedencia | `Aftermarket` u `OEM`. En el Excel la columna se llama Origen |
+| sort_order | Lugar de la fila al publicar. Único junto con `datasheet_id` |
+| number | El otro número de parte |
+| brand | Marca de ese número |
+| origin | `Aftermarket` u `OEM`. En el Excel la columna se llama Origen |
 
 `DM-152` de Dynagear y `DM-152` de Federated son dos filas. Se distinguen por número y marca.
 
@@ -360,11 +360,11 @@ Una fila por medida. Pertenece a una ficha.
 |---|---|
 | id | Identificador |
 | datasheet_id | Ficha a la que pertenece |
-| orden | Lugar de la fila al publicar. Único junto con `datasheet_id` |
-| clase | Familia de la medida. Ejemplo: Altura, Material |
-| nombre | La medida concreta |
-| unidad | mm, L, in. Puede ir vacía |
-| valor | 154, Acero, Sí |
+| sort_order | Lugar de la fila al publicar. Único junto con `datasheet_id` |
+| class | Familia de la medida. Ejemplo: Altura, Material |
+| name | La medida concreta |
+| unit | mm, L, in. Puede ir vacía |
+| value | 154, Acero, Sí |
 
 La misma clase puede repetirse con nombres distintos.
 
