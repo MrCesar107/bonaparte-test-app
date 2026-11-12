@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_065413) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_070006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -40,6 +40,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_065413) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "applications", force: :cascade do |t|
+    t.bigint "datasheet_id", null: false
+    t.integer "sort_order", default: 0, null: false
+    t.string "manufacturer"
+    t.string "model"
+    t.string "submodel"
+    t.string "start_year"
+    t.string "end_year"
+    t.string "liters"
+    t.string "engine_cc"
+    t.string "engine_cid"
+    t.string "engine_cylinders"
+    t.string "block"
+    t.string "fuel_type"
+    t.string "market"
+    t.string "position"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["datasheet_id"], name: "index_applications_on_datasheet_id"
   end
 
   create_table "datasheets", force: :cascade do |t|
@@ -93,6 +114,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_065413) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "applications", "datasheets"
   add_foreign_key "datasheets", "part_stores"
   add_foreign_key "parts", "datasheets"
 end
