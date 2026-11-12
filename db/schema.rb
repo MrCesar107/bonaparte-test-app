@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_070006) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_070457) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -74,6 +74,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_070006) do
     t.index ["part_store_id"], name: "index_datasheets_on_part_store_id"
   end
 
+  create_table "interchanges", force: :cascade do |t|
+    t.bigint "datasheet_id", null: false
+    t.integer "sort_order", default: 0, null: false
+    t.string "number"
+    t.string "brand"
+    t.string "origin"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["datasheet_id"], name: "index_interchanges_on_datasheet_id"
+  end
+
   create_table "part_stores", force: :cascade do |t|
     t.string "name", null: false
     t.datetime "created_at", null: false
@@ -116,5 +127,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_070006) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "applications", "datasheets"
   add_foreign_key "datasheets", "part_stores"
+  add_foreign_key "interchanges", "datasheets"
   add_foreign_key "parts", "datasheets"
 end
