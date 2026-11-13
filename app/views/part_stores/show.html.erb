@@ -1,6 +1,6 @@
-<div class="flex justify-between items-center">
-  <div class="flex flex-col">
-    <h1 class="text-3xl font-bold">Part Store <%= @part_store.name %></h1>
+<div class="flex min-w-0 items-center justify-between gap-4">
+  <div class="min-w-0">
+    <h1 class="break-words text-3xl font-bold">Part Store <%= @part_store.name %></h1>
   </div>
   <div class="flex flex-row">
     <%= render layout: "shared/modal", locals: { title: "Upload your data", trigger: link_to("Upload your data", new_datasheet_path(part_store_id: @part_store.id), class: "bg-orange-400 hover:bg-orange-500 cursor-pointer text-white px-4 py-2 rounded-full", data: { turbo_frame: "datasheet_form", action: "modal#open" }) } do %>
@@ -9,14 +9,6 @@
   </div>
 </div>
 <p class="text-gray-500 mt-3">Here you can see your parts catalog</p>
-<% if @datasheets.any? %>
-  <div class="mt-13 flex flex-col gap-4">
-    <% @datasheets.each do |datasheet| %>
-      <div class="flex flex-row justify-between items-center p-4 border border-gray-200 rounded-lg">
-        <div class="flex flex-col">
-          <%= datasheet.name %>
-        </div>
-      </div>
-    <% end %>
-  </div>
-<% end %>
+<div class="mt-13 flex min-w-0 flex-col gap-4">
+  <%= render partial: "datasheets/datasheet", collection: @datasheets %>
+</div>

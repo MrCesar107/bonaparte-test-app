@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_13_023129) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_13_081300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -122,6 +122,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_023129) do
     t.index ["datasheet_id"], name: "index_parts_on_datasheet_id"
   end
 
+  create_table "source_rows", force: :cascade do |t|
+    t.integer "position", null: false
+    t.string "internal_code"
+    t.string "part_number"
+    t.string "description"
+    t.string "article_description"
+    t.string "item_group"
+    t.string "manufacturer"
+    t.string "unit"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "datasheet_id", null: false
+    t.index ["datasheet_id", "position"], name: "index_source_rows_on_datasheet_id_and_position", unique: true
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "first_name", null: false
     t.string "last_name", null: false
@@ -143,4 +158,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_023129) do
   add_foreign_key "datasheets", "part_stores"
   add_foreign_key "interchanges", "datasheets"
   add_foreign_key "parts", "datasheets"
+  add_foreign_key "source_rows", "datasheets"
 end

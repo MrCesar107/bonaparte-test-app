@@ -1,8 +1,8 @@
 # Búsqueda de símiles
 
-La búsqueda es la investigación de [alcance.md](alcance.md): cada fila de Origen cuyo símil aún no existe en esa refaccionaria. Publicar el Excel y la pantalla quedan fuera. La base ya tiene las tablas; no hay migración.
+La búsqueda es la investigación de [alcance.md](alcance.md): cada fila de Origen cuyo símil aún no existe en esa refaccionaria. Publicar el Excel y la pantalla quedan fuera. La base ya tiene las tablas de la investigación. Falta `source_rows`: al leer el archivo, cada renglón de Origen se guarda ahí y el archivo no se vuelve a abrir.
 
-La lógica vive en `CatalogResearch`, en [app/models/catalog_research.rb](../app/models/catalog_research.rb). No hereda de `ApplicationRecord` y no hay carpeta de services. Lo llama quien procese el archivo. Por dentro son métodos privados: corte, consulta, aceptación de la página, lectura y guardado. Para persistir usa `PartStore`, `Datasheet`, `Part`, `Application`, `Interchange` y `Attribute`. Roo entra al Gemfile porque el alcance lo fija para leer el `.xlsx`. Serper y el modelo se llaman con `Net::HTTP`. Las claves son `SERPER_API_KEY` y `OPENAI_API_KEY`.
+La lógica vive en `CatalogResearch`, en [app/models/catalog_research.rb](../app/models/catalog_research.rb). No hereda de `ApplicationRecord` y no hay carpeta de services. Lo llama quien procese el archivo. Por dentro son métodos privados: corte, consulta, aceptación de la página, lectura y guardado. Para persistir usa `PartStore`, `SourceRow`, `Datasheet`, `Part`, `Application`, `Interchange` y `Attribute`. Roo entra al Gemfile porque el alcance lo fija para leer el `.xlsx`. Serper y el modelo se llaman con `Net::HTTP`. Las claves son `SERPER_API_KEY` y `OPENAI_API_KEY`.
 
 ## Recorrido de una fila
 
@@ -27,9 +27,9 @@ Se persiste al terminar la investigación de esa fila. Si el proceso muere antes
 
 ## 1. Leer Origen
 
-Roo abre la hoja Origen. Cada fila aporta código interno, número de parte, las dos descripciones, grupo, fabricante y unidad. El código interno, la unidad y el texto libre se conservan para la hoja Origen; no crean filas. La frase que se corta es `Descripcion`.
+Roo abre la hoja Origen una sola vez. Las líneas anteriores de esa ficha se reemplazan por las de este archivo. Cada fila aporta código interno, número de parte, las dos descripciones, grupo, fabricante y unidad, y se guarda en `source_rows` con su `position`. No crean filas de catálogo. La frase que se corta es `Descripcion`.
 
-`CatalogResearch` recibe la refaccionaria y el archivo, y recorre las filas en el orden del Excel.
+`CatalogResearch` recibe la refaccionaria y el archivo, guarda las líneas y recorre las filas en el orden del Excel.
 
 ## 2. Saltar lo ya guardado
 

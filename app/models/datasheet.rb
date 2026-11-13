@@ -1,6 +1,10 @@
 class Datasheet < ApplicationRecord
   belongs_to :part_store
 
+  has_many :source_rows, -> { order(:position) }, dependent: :destroy
+
+  has_one_attached :file
+
   enum :status, {
     pending: "pending",
     created: "created",

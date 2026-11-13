@@ -71,8 +71,16 @@ RSpec.describe "Part stores", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("newer-sheet")
+      expect(response.body).to include(%(class="block w-full min-w-0 overflow-x-auto" id="source_rows_#{newer.id}" src="#{datasheet_source_rows_path(newer)}"))
       expect(response.body).to include("older-sheet")
+      expect(response.body).to include("Origen")
+      expect(response.body).to include("Métricas")
+      expect(response.body).to include("Aplicaciones")
+      expect(response.body).to include("Intercambios")
+      expect(response.body).to include("Atributos")
+      expect(response.body).to include("Catálogo")
       expect(response.body).not_to include("other-sheet")
+      expect(response.body).not_to include("fa-chevron-right")
       expect(response.body.index("newer-sheet")).to be < response.body.index("older-sheet")
     end
   end

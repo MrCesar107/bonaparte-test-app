@@ -3,6 +3,8 @@ require "rails_helper"
 RSpec.describe Datasheet, type: :model do
   describe "associations" do
     it { is_expected.to belong_to(:part_store) }
+    it { is_expected.to have_many(:source_rows).dependent(:destroy) }
+    it { is_expected.to have_one_attached(:file) }
   end
 
   describe "enums" do

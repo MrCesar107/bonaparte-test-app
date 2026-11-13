@@ -35,6 +35,8 @@ RSpec.describe "Datasheets", type: :request do
       datasheet = part_store.datasheets.last
       expect(datasheet.status).to eq("pending")
       expect(datasheet.name).to eq("datasheet_#{datasheet.created_at.strftime("%Y%m%d%H%M%S")}")
+      expect(datasheet.file).to be_attached
+      expect(DatasheetResearchJob).to have_been_enqueued.with(datasheet)
       expect(response).to redirect_to(part_store_path(part_store))
 
       follow_redirect!

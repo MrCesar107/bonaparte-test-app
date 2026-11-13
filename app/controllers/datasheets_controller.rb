@@ -6,6 +6,8 @@ class DatasheetsController < ApplicationController
     datasheet = part_store.datasheets.create
 
     if file.present? && datasheet.persisted?
+      datasheet.file.attach(file)
+      ::DatasheetResearchJob.perform_later(datasheet)
       redirect_to part_store_path(part_store_id),
         notice: "File was uploaded successfully"
     else
