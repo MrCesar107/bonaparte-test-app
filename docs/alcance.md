@@ -128,9 +128,9 @@ La primera vez que aparece un símil:
 
 1. Toma la línea ya guardada. La frase que se corta es `Descripcion`.
 2. Corta la frase, sin red. Una lista fija de marcas de vehículo marca el corte: Nissan, Chevrolet, GMC, Dodge, Jeep, Ram, Chrysler, Ford y GM. La comparación no distingue mayúsculas. El fabricante de la refacción (Rexite, Elgin, Safety, Fraco, Revo) no corta la frase. Lo que está antes de la primera marca son los candidatos a símil, de izquierda a derecha. El número de parte de la columna entra al final, por si ninguno de esos candidatos tiene página. Si la frase no trae ninguna marca de la lista, el primer candidato es el número de parte y después van los tokens de la frase que traen un dígito. Lo que está después de la marca —vehículo, motor, años, medida— es pista de búsqueda. No se publica como aplicación. Un sufijo de sobremedida (`+20`, `+0.50`) no es candidato: se busca el número sin esa cola. La sobremedida se guarda como atributo solo si la ficha no la trae.
-3. Busca el primer candidato en Serper, entre comillas, más el alias en inglés del grupo, más los años de la frase cuando los trae. Descarga las páginas en el orden que devuelve la búsqueda. Una página sirve cuando ese candidato, ya normalizado, es el número de la ficha. Si ninguna URL cumple eso, sirve una ficha de un solo producto del mismo grupo en la que el candidato aparece como intercambio. Si ninguna URL sirve, prueba el siguiente candidato. Las listas que se guardan son las de la página que sirvió. No se mezclan fuentes.
+3. Busca el primer candidato en SerpApi, entre comillas, más el alias en inglés del grupo, más los años de la frase cuando los trae. Descarga las páginas en el orden que devuelve la búsqueda. Una página sirve cuando ese candidato, ya normalizado, es el número de la ficha. Si ninguna URL cumple eso, sirve una ficha de un solo producto del mismo grupo en la que el candidato aparece como intercambio. Si ninguna URL sirve, prueba el siguiente candidato. Las listas que se guardan son las de la página que sirvió. No se mezclan fuentes.
 4. Lee las tablas de la página que sirvió. Si no devuelven listas, una llamada a `gpt-6.1-sol` en effort medium reescribe ese texto.
-5. Guarda la ficha y la pieza. Si ningún candidato dejó página, la ficha queda en `not_found`, con las listas vacías y `url` en `""`. Si Serper, la descarga o el modelo no responden, ese símil se intenta hasta tres veces en la misma corrida. Si las tres fallan, la ficha queda en `failed`, vacía, con `url` en `""`. Una búsqueda que sí respondió y no trajo ficha no se reintenta: eso es `not_found`.
+5. Guarda la ficha y la pieza. Si ningún candidato dejó página, la ficha queda en `not_found`, con las listas vacías y `url` en `""`. Si SerpApi, la descarga o el modelo no responden, ese símil se intenta hasta tres veces en la misma corrida. Si las tres fallan, la ficha queda en `failed`, vacía, con `url` en `""`. Una búsqueda que sí respondió y no trajo ficha no se reintenta: eso es `not_found`.
 
 Dos números se comparan en mayúsculas y sin espacios, guiones, diagonales ni puntos. `9-0511S` y `90511S` son el mismo número. `SA-76260` y `76260` no lo son. `DM-152` y `M152` tampoco: son equivalentes, no dos escrituras. Si los dígitos son iguales, hay al menos cinco y la única diferencia es una letra de más en el prefijo, cuentan como el mismo número al aceptar la página. Así `FSX-5840301` acepta la ficha `FS5840301`. `152` no entra en esa segunda comparación. El `equivalent` que se guarda es el candidato tal como venía en la frase.
 
@@ -336,7 +336,7 @@ Una fila por símil dentro de la refaccionaria. El código buscado identifica la
 | url | Página de donde se leyeron las listas. En `not_found` y `failed` queda `""` |
 | status | `created`, `not_found` o `failed` |
 
-`created` significa que la página se encontró y la ficha quedó generada. `not_found` significa que la búsqueda respondió y no hubo página: la ficha se guarda vacía, con `url` en `""`, y no se reintenta, porque la ausencia ya es la respuesta. `failed` significa que Serper, la descarga o el modelo no respondieron. El conteo de esos intentos vive en el código de la investigación, no en una columna: se prueba hasta tres veces en la misma corrida. Si las tres fallan, la ficha se guarda vacía, con `url` en `""` y estado `failed`. La siguiente corrida encuentra esa fila y no vuelve a llamar. La siguiente fila con ese símil, en la misma refaccionaria, tampoco vuelve a buscar. Dos refaccionarias pueden investigar el mismo símil: cada una guarda su ficha.
+`created` significa que la página se encontró y la ficha quedó generada. `not_found` significa que la búsqueda respondió y no hubo página: la ficha se guarda vacía, con `url` en `""`, y no se reintenta, porque la ausencia ya es la respuesta. `failed` significa que SerpApi, la descarga o el modelo no respondieron. El conteo de esos intentos vive en el código de la investigación, no en una columna: se prueba hasta tres veces en la misma corrida. Si las tres fallan, la ficha se guarda vacía, con `url` en `""` y estado `failed`. La siguiente corrida encuentra esa fila y no vuelve a llamar. La siguiente fila con ese símil, en la misma refaccionaria, tampoco vuelve a buscar. Dos refaccionarias pueden investigar el mismo símil: cada una guarda su ficha.
 
 ### `parts`
 
@@ -416,7 +416,7 @@ La misma clase puede repetirse con nombres distintos.
 
 ### Qué no tiene tabla
 
-- El HTML de la página y la respuesta de Serper. Ya quedaron resumidos en la ficha.
+- El HTML de la página y la respuesta de SerpApi. Ya quedaron resumidos en la ficha.
 - Una fila por cada año del rango.
 - Marca y producto copiados en cada aplicación, intercambio o atributo. Se leen de `parts` al publicar.
 - Métricas. Son el conteo del Excel ya escrito.
@@ -437,7 +437,7 @@ Para leer el Excel de origen se usa Roo. Para escribir el de salida, caxlsx. El 
 
 La base de datos es Postgres, con las tablas de la sección Modelado de datos. `source_rows` todavía no está creada. Publicar lee esas tablas y arma las fichas con sus tablas relacionadas. Esa vista es la pantalla y el Excel resultante. No hay un archivo de catálogo que la aplicación cargue en cada corrida, ni se vuelve a abrir el Excel de entrada.
 
-La búsqueda usa Serper. La lectura de la página la hace código. `gpt-6.1-sol` en effort medium entra solo cuando esa lectura no obtiene listas. La clave va en `OPENAI_API_KEY`. Si Serper, la descarga o el modelo no responden, el símil se intenta tres veces en esa misma investigación y, si las tres fallan, queda en `failed`. Un job que reinicia después de una caída no repite los símiles ya guardados y no vuelve a contar esos tres intentos.
+La búsqueda usa SerpApi, con el motor `google`. La clave va en `SERPAPI_API_KEY`. La lectura de la página la hace código. `gpt-6.1-sol` en effort medium entra solo cuando esa lectura no obtiene listas. La clave del modelo va en `OPENAI_API_KEY`. Si SerpApi, la descarga o el modelo no responden, el símil se intenta tres veces en esa misma investigación y, si las tres fallan, queda en `failed`. Un job que reinicia después de una caída no repite los símiles ya guardados y no vuelve a contar esos tres intentos.
 
 ### Métricas de una pieza desconocida
 
