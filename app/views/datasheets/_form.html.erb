@@ -1,0 +1,12 @@
+<%= form_tag datasheets_path, method: :post, multipart: true, id: "new_datasheet", data: { turbo_frame: "_top" } do %>
+  <%= hidden_field_tag :part_store_id, params[:part_store_id] %>
+  <label class="relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center transition hover:border-orange-400 hover:bg-orange-50" data-controller="file-upload">
+    <%= file_field_tag :file,
+          accept: ".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv",
+          class: "absolute inset-0 size-full cursor-pointer opacity-0",
+          aria: { label: "Upload an .xlsx or .csv file" },
+          data: { action: "change->file-upload#chosen dragover->file-upload#activate dragleave->file-upload#deactivate drop->file-upload#deactivate" } %>
+    <span class="text-sm text-slate-600">Click or drag an .xlsx or .csv file here to upload it</span>
+    <span class="hidden text-sm font-medium text-slate-900" data-file-upload-target="name"></span>
+  </label>
+<% end %>

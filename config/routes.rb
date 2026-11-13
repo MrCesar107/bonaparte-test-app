@@ -14,6 +14,7 @@ Rails.application.routes.draw do
 
   resources :dashboard, only: %i[index]
   resources :part_stores, only: %i[new create show edit update destroy]
+  resources :datasheets, only: %i[create new]
 
   # Defines the root path route ("/")
   root "dashboard#index"

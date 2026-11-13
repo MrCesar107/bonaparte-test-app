@@ -3,7 +3,9 @@
     <h1 class="text-3xl font-bold">Part Store <%= @part_store.name %></h1>
   </div>
   <div class="flex flex-row">
-    <button class="bg-orange-400 hover:bg-orange-500 cursor-pointer text-white px-4 py-2 rounded-full">Upload your data</button>
+    <%= render layout: "shared/modal", locals: { title: "Upload your data", trigger: link_to("Upload your data", new_datasheet_path(part_store_id: @part_store.id), class: "bg-orange-400 hover:bg-orange-500 cursor-pointer text-white px-4 py-2 rounded-full", data: { turbo_frame: "datasheet_form", action: "modal#open" }) } do %>
+      <%= turbo_frame_tag "datasheet_form" %>
+    <% end %>
   </div>
 </div>
 <p class="text-gray-500 mt-3">Here you can see your parts catalog</p>
