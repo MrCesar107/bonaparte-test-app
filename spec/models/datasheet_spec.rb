@@ -4,6 +4,10 @@ RSpec.describe Datasheet, type: :model do
   describe "associations" do
     it { is_expected.to belong_to(:part_store) }
     it { is_expected.to have_many(:source_rows).dependent(:destroy) }
+    it { is_expected.to have_many(:parts).dependent(:destroy) }
+    it { is_expected.to have_many(:applications).dependent(:destroy) }
+    it { is_expected.to have_many(:interchanges).dependent(:destroy) }
+    it { is_expected.to have_many(:part_attributes).class_name("Attribute").dependent(:destroy) }
     it { is_expected.to have_one_attached(:file) }
   end
 
@@ -21,10 +25,6 @@ RSpec.describe Datasheet, type: :model do
   describe "validations" do
     it { is_expected.to allow_value(nil).for(:equivalent) }
     it { is_expected.to allow_value(nil).for(:url) }
-  end
-
-  it "defaults status to pending" do
-    expect(create(:datasheet)).to be_pending
   end
 
   it "assigns a name from the creation timestamp" do

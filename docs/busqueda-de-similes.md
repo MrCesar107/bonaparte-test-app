@@ -2,7 +2,7 @@
 
 La búsqueda es la investigación de [alcance.md](alcance.md): cada fila de Origen cuyo símil aún no existe en esa refaccionaria. Publicar el Excel y la pantalla quedan fuera. La base ya tiene las tablas de la investigación. Falta `source_rows`: al leer el archivo, cada renglón de Origen se guarda ahí y el archivo no se vuelve a abrir.
 
-La lógica vive en `CatalogResearch`, en [app/models/catalog_research.rb](../app/models/catalog_research.rb). No hereda de `ApplicationRecord` y no hay carpeta de services. Lo llama quien procese el archivo. Por dentro son métodos privados: corte, consulta, aceptación de la página, lectura y guardado. Para persistir usa `PartStore`, `SourceRow`, `Datasheet`, `Part`, `Application`, `Interchange` y `Attribute`. Roo entra al Gemfile porque el alcance lo fija para leer el `.xlsx`. SerpApi y el modelo se llaman con `Net::HTTP`. SerpApi consulta el motor `google` y devuelve ese orden. Las claves son `SERPAPI_API_KEY` y `OPENAI_API_KEY`.
+La lógica vive en `CatalogResearch`, en [app/models/catalog_research.rb](../app/models/catalog_research.rb). No hereda de `ApplicationRecord` y no hay carpeta de services. Lo llama quien procese el archivo. Por dentro son métodos privados: corte, consulta, aceptación de la página, lectura y guardado. Para persistir usa `PartStore`, `SourceRow`, `Datasheet`, `Part`, `Application`, `Interchange` y `Attribute`. Roo entra al Gemfile porque el alcance lo fija para leer el `.xlsx`. SerpApi se llama con `Net::HTTP`. Consulta el motor `google` y devuelve ese orden. La clave es `SERPAPI_API_KEY`. El modelo se llama con RubyLLM. La clave es `OPENAI_API_KEY`.
 
 ## Recorrido de una fila
 
@@ -68,7 +68,7 @@ Una página sirve cuando el candidato, ya comparado así, es el número de esa f
 
 El código lee las tablas de la página que sirvió: aplicaciones, intercambios y atributos, en el orden de la página. Ese orden se guarda en `sort_order`.
 
-Si esas tablas no devuelven listas, una sola llamada a `gpt-6.1-sol` con effort medium reescribe el texto de esa página. El modelo no elige otra URL ni otra ficha. La clave va en `OPENAI_API_KEY`.
+Si esas tablas no devuelven listas, una sola llamada a `gpt-6.1-sol` con effort medium reescribe el texto de esa página. La llamada pasa por RubyLLM. El modelo no elige otra URL ni otra ficha. La clave va en `OPENAI_API_KEY`.
 
 De cada aplicación se guardan fabricante, modelo, submodelo, vigencia, litros, `engine_cc`, `engine_cid`, `engine_cylinders`, bloque, `fuel_type` y mercado. La vigencia es `start_year` y `end_year`; un rango no se abre en una fila por año. Si la ficha dice «desde 2007» y no hay año final, `end_year` queda vacío y el modelo se guarda tal cual. La posición queda vacía. CC y CID se copian como vienen en la ficha.
 

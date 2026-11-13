@@ -3,6 +3,9 @@ class Datasheet < ApplicationRecord
 
   has_many :source_rows, -> { order(:position) }, dependent: :destroy
   has_many :parts, dependent: :destroy
+  has_many :applications, dependent: :destroy
+  has_many :interchanges, dependent: :destroy
+  has_many :part_attributes, class_name: "Attribute", dependent: :destroy
 
   has_one_attached :file
 
