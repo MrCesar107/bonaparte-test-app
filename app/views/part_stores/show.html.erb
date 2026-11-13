@@ -9,3 +9,14 @@
   </div>
 </div>
 <p class="text-gray-500 mt-3">Here you can see your parts catalog</p>
+<% if @datasheets.any? %>
+  <div class="mt-13 flex flex-col gap-4">
+    <% @datasheets.each do |datasheet| %>
+      <div class="flex flex-row justify-between items-center p-4 border border-gray-200 rounded-lg">
+        <div class="flex flex-col">
+          <%= datasheet.name %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

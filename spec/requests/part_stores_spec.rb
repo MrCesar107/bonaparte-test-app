@@ -1,17 +1,10 @@
 require "rails_helper"
 
 RSpec.describe "Part stores", type: :request do
+  before { sign_in create(:user) }
+
   describe "GET /part_stores/new" do
     it "renders the new part store form" do
-      user = User.create!(
-        first_name: "Ada",
-        last_name: "Lovelace",
-        email: "ada-part-store-new@example.com",
-        password: "password123",
-        password_confirmation: "password123"
-      )
-      sign_in user
-
       get new_part_store_path
 
       expect(response).to have_http_status(:ok)
@@ -26,15 +19,6 @@ RSpec.describe "Part stores", type: :request do
 
   describe "POST /part_stores" do
     it "renders the new form with errors when the part store cannot be created" do
-      user = User.create!(
-        first_name: "Ada",
-        last_name: "Lovelace",
-        email: "ada-part-store@example.com",
-        password: "password123",
-        password_confirmation: "password123"
-      )
-      sign_in user
-
       expect {
         post part_stores_path, params: { part_store: { name: "" } }, headers: { "Turbo-Frame" => "part_store_form" }
       }.not_to change(PartStore, :count)
@@ -48,15 +32,6 @@ RSpec.describe "Part stores", type: :request do
     end
 
     it "redirects to the part store when it is created" do
-      user = User.create!(
-        first_name: "Ada",
-        last_name: "Lovelace",
-        email: "ada-created@example.com",
-        password: "password123",
-        password_confirmation: "password123"
-      )
-      sign_in user
-
       expect {
         post part_stores_path, params: { part_store: { name: "North Garage" } }
       }.to change(PartStore, :count).by(1)
@@ -73,21 +48,32 @@ RSpec.describe "Part stores", type: :request do
 
   describe "GET /part_stores/:id" do
     it "renders the part store with the application layout" do
-      user = User.create!(
-        first_name: "Ada",
-        last_name: "Lovelace",
-        email: "ada-part-store-show@example.com",
-        password: "password123",
-        password_confirmation: "password123"
-      )
-      sign_in user
-      part_store = PartStore.create!(name: "North Garage")
+      part_store = create(:part_store, name: "North Garage")
 
       get part_store_path(part_store)
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("North Garage")
       expect(response.body).to include("Logout")
+    end
+
+    it "lists the part store datasheets with the newest first" do
+      part_store = create(:part_store, name: "North Garage")
+      other_store = create(:part_store, name: "South Garage")
+      older = create(:datasheet, part_store: part_store)
+      newer = create(:datasheet, part_store: part_store)
+      other = create(:datasheet, part_store: other_store)
+      older.update_columns(name: "older-sheet", created_at: 2.days.ago)
+      newer.update_columns(name: "newer-sheet", created_at: 1.hour.ago)
+      other.update_columns(name: "other-sheet")
+
+      get part_store_path(part_store)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("newer-sheet")
+      expect(response.body).to include("older-sheet")
+      expect(response.body).not_to include("other-sheet")
+      expect(response.body.index("newer-sheet")).to be < response.body.index("older-sheet")
     end
   end
 end

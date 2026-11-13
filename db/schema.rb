@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_070912) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_13_023129) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -77,11 +77,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_070912) do
 
   create_table "datasheets", force: :cascade do |t|
     t.bigint "part_store_id", null: false
-    t.string "equivalent", null: false
-    t.string "url", null: false
-    t.string "status", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.string "equivalent"
+    t.string "url"
+    t.string "status", default: "pending"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.string "name"
     t.index ["part_store_id", "equivalent"], name: "index_datasheets_on_part_store_id_and_equivalent", unique: true
     t.index ["part_store_id"], name: "index_datasheets_on_part_store_id"
   end

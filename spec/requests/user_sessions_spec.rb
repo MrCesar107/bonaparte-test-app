@@ -17,13 +17,7 @@ RSpec.describe "User session", type: :request do
 
   describe "POST /users/sign_in" do
     it "shows the controller notice in the alert component" do
-      user = User.create!(
-        first_name: "Ada",
-        last_name: "Lovelace",
-        email: "ada-alert@example.com",
-        password: "password123",
-        password_confirmation: "password123"
-      )
+      user = create(:user)
 
       post user_session_path, params: { user: { email: user.email, password: "password123" } }
 

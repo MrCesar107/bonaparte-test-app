@@ -3,14 +3,7 @@ require "rails_helper"
 RSpec.describe "Dashboard", type: :request do
   describe "GET /" do
     it "opens the new part store form inside the modal" do
-      user = User.create!(
-        first_name: "Ada",
-        last_name: "Lovelace",
-        email: "ada@example.com",
-        password: "password123",
-        password_confirmation: "password123"
-      )
-      sign_in user
+      sign_in create(:user)
 
       get root_path
 
