@@ -21,6 +21,11 @@ Rails.application.routes.draw do
   resources :part_stores, only: %i[new create show edit update destroy]
   resources :datasheets, only: %i[create new] do
     resources :source_rows, only: %i[index], controller: "datasheets/source_rows"
+    resource :metrics, only: %i[show], controller: "datasheets/metrics"
+    resources :applications, only: %i[index], controller: "datasheets/applications"
+    resources :interchanges, only: %i[index], controller: "datasheets/interchanges"
+    resources :attributes, only: %i[index], controller: "datasheets/attributes"
+    resources :catalog_rows, only: %i[index], controller: "datasheets/catalog_rows"
   end
 
   # Defines the root path route ("/")

@@ -4,7 +4,7 @@ class Datasheets::SourceRowsController < ::ApplicationController
   before_action :set_datasheet
 
   def index
-    @source_rows = @datasheet.source_rows.all
+    @view = Datasheet::CatalogView.new(datasheet: @datasheet).call
   end
 
   private

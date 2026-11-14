@@ -34,6 +34,9 @@
       <div class="hidden p-4 border-l border-b border-r border-gray-300" data-tabs-target="panel">
         <%= turbo_frame_tag "source_rows_#{datasheet.id}", src: datasheet_source_rows_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
       </div>
+      <div class="hidden p-4 border-l border-b border-r border-gray-300" data-tabs-target="panel">
+        <%= turbo_frame_tag "metrics_#{datasheet.id}", src: datasheet_metrics_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
+      </div>
     </div>
   </div>
 </div>

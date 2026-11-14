@@ -32,6 +32,6 @@ class PartStoresController < ApplicationController
   end
 
   def datasheets
-    @datasheets ||= @part_store.datasheets.order(created_at: :desc)
+    @datasheets ||= @part_store.datasheets.where(equivalent: nil).order(created_at: :desc)
   end
 end

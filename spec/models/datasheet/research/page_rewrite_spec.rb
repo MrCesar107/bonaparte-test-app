@@ -26,6 +26,15 @@ RSpec.describe Datasheet::Research::PageRewrite do
       expect(lists.unconfirmed_tokens).to eq([])
     end
 
+    it "rewrites a page whose bytes are not marked as UTF-8" do
+      stub_replies page_json
+      body = "<p>cami\xC3\xB3n</p>".b
+
+      lists = described_class.new.call(body)
+
+      expect(lists.part_number).to eq("M152")
+    end
+
     it "raises unavailable when the model does not respond" do
       stub_replies RubyLLM::ServerError.new("The provider is down")
 

@@ -18,9 +18,9 @@ RSpec.describe Datasheet::Research::PageLists do
       expect(rewrite).not_to have_received(:call)
     end
 
-    it "asks the model to rewrite the same page when the tables are empty" do
-      rewritten = empty_lists(part_number: "M152", product: "Bomba de aceite")
-      rewrite = double("rewrite", call: rewritten)
+    it "keeps empty lists when the page has no tables" do
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call)
       body = "<p>texto de la ficha</p>"
 
       lists = described_class.new(
@@ -30,8 +30,8 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       ).call
 
-      expect(rewrite).to have_received(:call).with(body)
-      expect(lists.product).to eq("Bomba de aceite")
+      expect(rewrite).not_to have_received(:call)
+      expect(lists.applications).to be_empty
       expect(lists.unconfirmed_tokens).to eq([ "QJC20G" ])
     end
 

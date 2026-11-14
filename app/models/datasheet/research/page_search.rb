@@ -22,44 +22,65 @@ class Datasheet::Research::PageSearch
   private
 
   def attempt
+    download_failed = false
+
     @phrase.candidates.each do |candidate|
-      pages = Array(@search.call(@phrase.queries[candidate]).map { |url| @fetch.call(url) })
-      hit = part_number_hit(candidate, pages) || interchange_hit(candidate, pages)
+      urls = search_urls(candidate)
+      return urls if urls.is_a?(Symbol)
+
+      pages, failed = pages_for(urls)
+      download_failed ||= failed
+      hit = part_number_hit(candidate, pages)
       return hit if hit
-    rescue Datasheet::Research::OutOfCredits
-      return :out_of_credits
-    rescue Datasheet::Research::Unavailable
-      return :retry
     end
+
+    return :retry if download_failed
 
     :not_found
   end
 
+  def search_urls(candidate)
+    Array(@search.call(@phrase.queries[candidate]))
+  rescue Datasheet::Research::OutOfCredits
+    :out_of_credits
+  rescue Datasheet::Research::Unavailable
+    :retry
+  end
+
+  def pages_for(urls)
+    failed = false
+    pages = urls.filter_map do |url|
+      @fetch.call(url)
+    rescue Datasheet::Research::Unavailable
+      failed = true
+      nil
+    end
+
+    [ pages, failed && pages.empty? ]
+  end
+
   def part_number_hit(candidate, pages)
-    page = pages.find { |item| Datasheet::Research::Phrase.same_number?(item.part_number, candidate) }
+    page = pages.find { |item| same_sheet_number?(item, candidate) }
     hit(candidate, page)
   end
 
-  def interchange_hit(candidate, pages)
-    page = pages.find do |item|
-      item.product_count == 1 && same_group?(item) && interchange?(item, candidate)
-    end
-
-    hit(candidate, page)
+  def same_sheet_number?(page, candidate)
+    identity_tokens(page).any? { |token| Datasheet::Research::Phrase.same_number?(token, candidate) }
   end
 
-  def interchange?(page, candidate)
-    page.interchange_numbers.any? do |number|
-      Datasheet::Research::Phrase.same_number?(number, candidate)
-    end
+  def identity_tokens(page)
+    text = "#{page.url.to_s.tr("/:?&=", " ")} #{sheet_heading(page.body)}"
+    text.split(/\s+/).filter_map { |word|
+      token = word.gsub(/\A[^A-Z0-9]+|[^A-Z0-9]+\z/i, "")
+      token if token.match?(/\d/) && token.match?(/[A-Z]/i)
+    }
   end
 
-  def same_group?(page)
-    group = I18n.transliterate(page.group.to_s).downcase
-    alias_name = @phrase.group_alias.to_s
-    item_group = I18n.transliterate(@item_group).downcase.squish
-
-    group.present? && (group.include?(alias_name) || group.include?(item_group))
+  def sheet_heading(body)
+    html = body.to_s
+    title = html[/<title[^>]*>(.*?)<\/title>/im, 1]
+    heading = html[/<h1[^>]*>(.*?)<\/h1>/im, 1]
+    [ title, heading ].compact.join(" ")
   end
 
   def hit(candidate, page)

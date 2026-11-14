@@ -3,7 +3,7 @@ class Datasheet::Research::PageRewrite
 
   def call(body)
     lists_from(ask(body).parsed)
-  rescue RubyLLM::Error
+  rescue RubyLLM::Error, JSON::GeneratorError
     raise Datasheet::Research::Unavailable
   end
 
@@ -24,8 +24,12 @@ class Datasheet::Research::PageRewrite
       A year range stays in start_year and end_year.
       If the page says "since" a year and there is no end year, leave end_year as an empty string.
 
-      #{body}
+      #{utf8(body)}
     TEXT
+  end
+
+  def utf8(text)
+    text.to_s.dup.force_encoding(Encoding::UTF_8).scrub
   end
 
   def lists_from(data)

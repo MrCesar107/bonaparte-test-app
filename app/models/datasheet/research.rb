@@ -1,7 +1,14 @@
 class Datasheet::Research
-  def initialize(datasheet, file)
+  def initialize(
+    datasheet,
+    file,
+    search: Datasheet::Research::SerpApiSearch.new,
+    fetch: Datasheet::Research::PageFetch.new
+  )
     @datasheet = datasheet
     @file = file
+    @search = search
+    @fetch = fetch
   end
 
   def call
@@ -12,6 +19,7 @@ class Datasheet::Research
     return @datasheet.failed! if rows.empty?
 
     @datasheet.source_rows.insert_all(rows)
+    research_source_rows
     @datasheet.created!
   end
 
@@ -27,18 +35,64 @@ class Datasheet::Research
     end
   end
 
+  def research_source_rows
+    @datasheet.source_rows.reset.each do |source_row|
+      stored = Datasheet::Research::StoredRow.new(
+        part_store: @datasheet.part_store,
+        source_row: source_row
+      ).call
+      next unless stored == :missing
+
+      phrase = Datasheet::Research::Phrase.new(
+        description: source_row.description,
+        part_number: source_row.part_number,
+        item_group: source_row.item_group
+      ).call
+      result = Datasheet::Research::PageSearch.new(
+        phrase: phrase,
+        item_group: source_row.item_group,
+        search: @search,
+        fetch: @fetch
+      ).call
+      break if result == :out_of_credits
+
+      Datasheet::Research::SimileRecord.new(
+        part_store: @datasheet.part_store,
+        source_row: source_row,
+        phrase: phrase,
+        result: result
+      ).call
+    end
+  end
+
   def build_source_info(row)
-    cells = row.first(7).map { |cell| cell&.value }
+    cells = row.first(7).map { |cell| cell_text(cell) }
     return if cells.all?(&:blank?)
 
     {
       internal_code: cells[0],
       part_number: cells[1],
-      description: cells[2],
-      article_description: cells[3],
+      article_description: cells[2],
+      description: cells[3],
       item_group: cells[4],
       manufacturer: cells[5],
       unit: cells[6]
     }
+  end
+
+  def cell_text(cell)
+    value = cell&.value
+    return if value.blank?
+
+    return whole_number(value) if value.is_a?(Numeric)
+
+    value.to_s
+  end
+
+  def whole_number(value)
+    number = value.to_f
+    return number.to_i.to_s if number == number.to_i
+
+    value.to_s
   end
 end

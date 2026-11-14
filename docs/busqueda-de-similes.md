@@ -2,7 +2,7 @@
 
 La búsqueda es la investigación de [alcance.md](alcance.md): cada fila de Origen cuyo símil aún no existe en esa refaccionaria. Publicar el Excel y la pantalla quedan fuera. La base ya tiene las tablas de la investigación. Falta `source_rows`: al leer el archivo, cada renglón de Origen se guarda ahí y el archivo no se vuelve a abrir.
 
-La lógica vive en `CatalogResearch`, en [app/models/catalog_research.rb](../app/models/catalog_research.rb). No hereda de `ApplicationRecord` y no hay carpeta de services. Lo llama quien procese el archivo. Por dentro son métodos privados: corte, consulta, aceptación de la página, lectura y guardado. Para persistir usa `PartStore`, `SourceRow`, `Datasheet`, `Part`, `Application`, `Interchange` y `Attribute`. Roo entra al Gemfile porque el alcance lo fija para leer el `.xlsx`. SerpApi se llama con `Net::HTTP`. Consulta el motor `google` y devuelve ese orden. La clave es `SERPAPI_API_KEY`. El modelo se llama con RubyLLM. La clave es `OPENAI_API_KEY`.
+La lógica vive en `CatalogResearch`, en [app/models/catalog_research.rb](../app/models/catalog_research.rb). No hereda de `ApplicationRecord` y no hay carpeta de services. Lo llama quien procese el archivo. Por dentro son métodos privados: corte, consulta, aceptación de la página, lectura y guardado. Para persistir usa `PartStore`, `SourceRow`, `Datasheet`, `Part`, `Application`, `Interchange` y `Attribute`. Roo entra al Gemfile porque el alcance lo fija para leer el `.xlsx`. SerpApi se llama con `Net::HTTP`. Consulta el motor `google` y devuelve ese orden. La clave es `SERPAPI_API_KEY`. La lectura de la página la hace el código.
 
 ## Recorrido de una fila
 
@@ -13,13 +13,12 @@ flowchart TD
   saved -->|si| part[Crear la pieza si la huella es nueva]
   saved -->|no| search[SerpApi en orden de candidatos]
   search --> page{Alguna página sirve}
-  page -->|numero de ficha o intercambio| read[Leer tablas de esa página]
+  page -->|numero en titulo encabezado o direccion| read[Leer tablas o el Product]
   read --> lists{Hay listas}
   lists -->|si| store[Guardar ficha created]
-  lists -->|no| model[gpt-6.1-sol reescribe ese texto]
-  model --> store
-  page -->|ninguna| missing[Guardar ficha not_found]
-  search -->|SerpApi descarga o modelo no responden| retry[Hasta tres veces en la corrida]
+  lists -->|no| missing[Guardar ficha not_found]
+  page -->|ninguna| missing
+  search -->|SerpApi o la descarga no responden| retry[Hasta tres veces en la corrida]
   retry -->|siguen sin responder| failed[Guardar ficha failed]
 ```
 
@@ -60,7 +59,7 @@ Se prueba el primer candidato. SerpApi devuelve el orden de Google. Se descargan
 
 Dos números se comparan en mayúsculas y sin espacios, guiones, diagonales ni puntos. `9-0511S` y `90511S` coinciden. `SA-76260` y `76260` no. `DM-152` y `M152` no: son equivalentes, no dos escrituras. Si los dígitos son iguales, hay al menos cinco y la única diferencia es una letra de más en el prefijo, cuentan como el mismo número al aceptar la página. Así `FSX-5840301` acepta `FS5840301`. `152` no entra en esa segunda comparación.
 
-Una página sirve cuando el candidato, ya comparado así, es el número de esa ficha. Si ninguna URL cumple eso, sirve una ficha de un solo producto del mismo grupo en la que el candidato aparece como intercambio. En la bomba, esa es la ficha Melling `M152`, y el símil guardado sigue siendo `DM-152`. Si ninguna URL sirve, se prueba el siguiente candidato.
+Una página sirve cuando el candidato, ya comparado así, está en el título, el encabezado `h1` o la dirección. Una mención en el cuerpo no alcanza. En la bomba, Parts Hawk publica la ficha Melling `M152` y lista `DM-152` como intercambio; el título y la dirección dicen `M152`, así que esa página no entra para `DM-152`. Si ninguna URL sirve, se prueba el siguiente candidato.
 
 `equivalent` queda escrito como el candidato que sirvió, con sus guiones. Las listas guardadas son las de esa página. No se mezclan fuentes. El HTML y la respuesta de SerpApi no se guardan.
 
@@ -68,7 +67,14 @@ Una página sirve cuando el candidato, ya comparado así, es el número de esa f
 
 El código lee las tablas de la página que sirvió: aplicaciones, intercambios y atributos, en el orden de la página. Ese orden se guarda en `sort_order`.
 
-Si esas tablas no devuelven listas, una sola llamada a `gpt-6.1-sol` con effort medium reescribe el texto de esa página. La llamada pasa por RubyLLM. El modelo no elige otra URL ni otra ficha. La clave va en `OPENAI_API_KEY`.
+Si no hay tablas, lee el `Product` de schema.org. El hallazgo está en [alcance.md](alcance.md), en «Qué devolvió la búsqueda de FSX-5840301». La consulta `"FSX-5840301" gasket set 1989 2003` aceptó la ficha de iMotriz `FS5840301`. Esa página no trae tablas: el número del cuerpo va enmascarado y las listas están en `script[type="application/ld+json"]`. Se compararon tres fichas de esa plantilla, `FS5840301`, `FS5840300` y `OS5840301`, y el lector sigue lo que las tres comparten:
+
+- `sku` o `mpn` es el número de la ficha. El nombre es el producto. El texto anterior a «Aplicación y Compatibilidad» es la descripción.
+- La marca va antes de los dos puntos. Los modelos se parten en «y» o en coma. «desde 1993» deja año inicial y año final vacío. `2.4L` o `2.7 L` es el litraje. «años no especificados», o un motor solo entre paréntesis, no inventan un año.
+- Los intercambios salen de `alternateName`, sin repetir el propio `sku`. Si la frase «Referencias equivalentes / Intercambios» trae números, también entran. La ficha de iMotriz no les pone marca, así que la procedencia queda `Aftermarket`.
+- En `FS5840301` eso publica Nissan D-21 desde 1993 y los intercambios `1010140F26`, `1010140F87` y `50241400`. No publica atributos ni `JC-20`: eso está en el PDF de Fraco, que esta descarga no lee.
+
+Los otros resultados de esa consulta no enseñaron otro patrón: fichas de otro número, una página de refa100 de `FSX-5840120` y redirecciones de Google. Una página aceptada sin tablas y sin esta frase no se publica. `gpt-6.1-sol` no rellena ese vacío.
 
 De cada aplicación se guardan fabricante, modelo, submodelo, vigencia, litros, `engine_cc`, `engine_cid`, `engine_cylinders`, bloque, `fuel_type` y mercado. La vigencia es `start_year` y `end_year`; un rango no se abre en una fila por año. Si la ficha dice «desde 2007» y no hay año final, `end_year` queda vacío y el modelo se guarda tal cual. La posición queda vacía. CC y CID se copian como vienen en la ficha.
 
@@ -82,9 +88,9 @@ Los códigos de la frase que esa página no confirmó van a `parts.unconfirmed_t
 
 En la misma escritura quedan la ficha, sus listas y la pieza.
 
-- `created`: había página. `url` es esa página. La pieza guarda referencia en `part_reference`, frase, huella, marca, grupo, categoría `Vehículo ligero`, sistema `Motor`, y el subsistema, producto y descripción leídos una sola vez.
-- `not_found`: SerpApi respondió y ningún candidato dejó página. Listas vacías, `url` en `""`, y el `equivalent` es el primer candidato. No se reintenta.
-- `failed`: SerpApi, la descarga o el modelo no respondieron en los tres intentos de esa investigación. Listas vacías y `url` en `""`. [app/models/datasheet.rb](../app/models/datasheet.rb) ya exige `url`, así que el vacío es `""` y no `nil`.
+- `created`: había página con listas. `url` es esa página. La pieza guarda referencia en `part_reference`, frase, huella, marca, grupo, categoría `Vehículo ligero`, sistema `Motor`, y el subsistema, producto y descripción leídos una sola vez.
+- `not_found`: SerpApi respondió y ningún candidato dejó página con listas. Listas vacías, `url` en `""`, y el `equivalent` es el primer candidato. No se reintenta.
+- `failed`: SerpApi o la descarga no respondieron en los tres intentos de esa investigación. Listas vacías y `url` en `""`. [app/models/datasheet.rb](../app/models/datasheet.rb) ya exige `url`, así que el vacío es `""` y no `nil`.
 
 `url` vacío cumple la validación de presencia porque es una cadena vacía, no un nulo. La pieza de una ficha vacía se guarda para recordar la huella; al publicar no genera Catálogo, Aplicaciones, Intercambios ni Atributos. Eso lo hará la publicación, no esta búsqueda.
 
@@ -92,4 +98,4 @@ En la misma escritura quedan la ficha, sus listas y la pieza.
 
 Specs del corte, el alias, los años y la comparación de números con los casos del alcance: `RM-152`, `76/14`, `FSX-5840301` contra `FS5840301`, `SA-76260` contra `76260`, y `DM-152` contra `M152`.
 
-Specs de `CatalogResearch` con SerpApi, la descarga y el modelo simulados: reutilizar una ficha existente, aceptar el número de ficha antes que el intercambio, guardar `DM-152` cuando la página es `M152`, no mezclar dos páginas, `not_found` sin reintento, `failed` al tercer fallo, y la huella repetida sin otra búsqueda. No se llama a la red en la suite.
+Specs de la lectura con las tres frases de iMotriz: D-21 desde 1993, D21 y Busetón a 2.7 L sin año, y Vanette a 2.4 L con el motor entre paréntesis. El propio `sku` no se guarda como intercambio. Specs de la aceptación: el candidato en el título, el encabezado o la dirección; una mención en el cuerpo no alcanza, y la ficha de otro número tampoco, aunque liste al candidato como intercambio. No se llama a la red en la suite.

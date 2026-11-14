@@ -1,28 +1,28 @@
 <%= turbo_frame_tag "source_rows_#{@datasheet.id}", class: "block w-full min-w-0 overflow-x-auto" do %>
-<table class="w-max min-w-full whitespace-nowrap border-collapse">
-  <thead class="border-b border-gray-300">
-    <tr>
-      <th class="p-2 text-left">Internal Code</th>
-      <th class="p-2 text-left">Part Number</th>
-      <th class="p-2 text-left">Description</th>
-      <th class="p-2 text-left">Article Description</th>
-      <th class="p-2 text-left">Item Group</th>
-      <th class="p-2 text-left">Manufacturer</th>
-      <th class="p-2 text-left">Unit</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% @source_rows.each do |source_row| %>
-      <tr class="border-b border-gray-300 odd:bg-gray-100">
-        <td class="p-2 text-left"><%= source_row.internal_code %></td>
-        <td class="p-2 text-left"><%= source_row.part_number %></td>
-        <td class="p-2 text-left"><%= source_row.description %></td>
-        <td class="p-2 text-left"><%= source_row.article_description %></td>
-        <td class="p-2 text-left"><%= source_row.item_group %></td>
-        <td class="p-2 text-left"><%= source_row.manufacturer %></td>
-        <td class="p-2 text-left"><%= source_row.unit %></td>
+  <table class="w-max min-w-full whitespace-nowrap border-collapse">
+    <thead class="border-b border-gray-300">
+      <tr>
+        <th class="p-2 text-left">Internal Code</th>
+        <th class="p-2 text-left">Part Number</th>
+        <th class="p-2 text-left">Article Description</th>
+        <th class="p-2 text-left">Description</th>
+        <th class="p-2 text-left">Item Group</th>
+        <th class="p-2 text-left">Manufacturer</th>
+        <th class="p-2 text-left">Unit</th>
       </tr>
-    <% end %>
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      <% @view.origin.each do |row| %>
+        <tr class="border-b border-gray-300 odd:bg-gray-100">
+          <td class="p-2 text-left"><%= row.internal_code %></td>
+          <td class="p-2 text-left"><%= row.part_number %></td>
+          <td class="p-2 text-left"><%= row.article_description %></td>
+          <td class="p-2 text-left"><%= row.description %></td>
+          <td class="p-2 text-left"><%= row.item_group %></td>
+          <td class="p-2 text-left"><%= row.manufacturer %></td>
+          <td class="p-2 text-left"><%= row.unit %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
 <% end %>

@@ -26,9 +26,13 @@ class Datasheet::Research::PageLists
 
   def call
     read = Datasheet::Research::PageTables.new(@body).call
-    read = @rewrite.call(@body) unless read.any?
+    @from_page = read.any?
     read = add_oversize(read)
     read.with(unconfirmed_tokens: unconfirmed_tokens(read))
+  end
+
+  def from_page?
+    @from_page == true
   end
 
   private

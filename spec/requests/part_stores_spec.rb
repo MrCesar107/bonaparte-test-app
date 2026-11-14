@@ -83,5 +83,18 @@ RSpec.describe "Part stores", type: :request do
       expect(response.body).not_to include("fa-chevron-right")
       expect(response.body.index("newer-sheet")).to be < response.body.index("older-sheet")
     end
+
+    it "leaves researched similars off the catalog list" do
+      part_store = create(:part_store, name: "North Garage")
+      upload = create(:datasheet, part_store: part_store)
+      simile = create(:datasheet, part_store: part_store, equivalent: "DM-152", status: :created, url: "https://parts.test/dm-152")
+      upload.update_columns(name: "upload-sheet")
+      simile.update_columns(name: "simile-sheet")
+
+      get part_store_path(part_store)
+
+      expect(response.body).to include("upload-sheet")
+      expect(response.body).not_to include("simile-sheet")
+    end
   end
 end

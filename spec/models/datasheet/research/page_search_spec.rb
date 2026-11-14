@@ -14,14 +14,58 @@ RSpec.describe Datasheet::Research::PageSearch do
       expect(search).to have_received(:call).once
     end
 
-    it "keeps DM-152 when the accepted page is the M152 interchange" do
-      melling = page(url: "https://parts.test/m152", part_number: "M152", interchange_numbers: [ "DM-152" ], body: "melling")
-      search = search_returning('"DM-152" oil pump 1976 2014' => [ melling.url ])
+    it "does not accept an interchange page unless the candidate is in the title, heading, or address" do
+      melling = page(url: "https://parts.test/m152", part_number: "M152", interchange_numbers: [ "DM-152" ], body: "<title>M152 Oil Pump</title>")
+      search = search_returning(
+        '"DM-152" oil pump 1976 2014' => [ melling.url ],
+        '"RM-152" oil pump 1976 2014' => []
+      )
       fetch = fetch_returning(melling)
+
+      expect(search_pages(search:, fetch:)).to eq(:not_found)
+    end
+
+    it "accepts a page whose title carries the candidate" do
+      match = page(
+        url: "https://parts.test/pump",
+        part_number: "",
+        body: "<title>DM-152 Oil Pump</title><p>fits trucks</p>"
+      )
+      search = search_returning('"DM-152" oil pump 1976 2014' => [ match.url ])
+      fetch = fetch_returning(match)
 
       hit = search_pages(search:, fetch:)
 
-      expect(hit).to have_attributes(equivalent: "DM-152", url: melling.url, body: "melling")
+      expect(hit).to have_attributes(equivalent: "DM-152", url: match.url)
+    end
+
+    it "does not accept a page that only mentions the candidate in the text" do
+      other = page(
+        url: "https://parts.test/other",
+        part_number: "M200",
+        body: "<title>Other pump</title><p>see also DM-152</p>",
+        interchange_numbers: [ "XX-1" ]
+      )
+      search = search_returning(
+        '"DM-152" oil pump 1976 2014' => [ other.url ],
+        '"RM-152" oil pump 1976 2014' => []
+      )
+      fetch = fetch_returning(other)
+
+      expect(search_pages(search:, fetch:)).to eq(:not_found)
+    end
+
+    it "keeps a later page when an earlier download does not respond" do
+      match = page(url: "https://parts.test/dm-152", part_number: "DM-152", body: "ficha DM-152")
+      search = search_returning('"DM-152" oil pump 1976 2014' => [ "https://parts.test/down", match.url ])
+      fetch = instance_double(Proc)
+      allow(fetch).to receive(:call).with("https://parts.test/down").and_raise(Datasheet::Research::Unavailable)
+      allow(fetch).to receive(:call).with(match.url).and_return(match)
+
+      hit = search_pages(search:, fetch:)
+
+      expect(hit).to have_attributes(equivalent: "DM-152", url: match.url)
+      expect(search).to have_received(:call).once
     end
 
     it "does not accept a single product page that lacks the interchange" do

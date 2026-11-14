@@ -83,7 +83,7 @@ El código interno, las dos descripciones, el grupo, el fabricante y la unidad s
 
 ### Dónde se busca
 
-No hay una base de autopartes con una conexión clara para estas marcas. La investigación se hace en fichas públicas: se busca el símil entre comillas, junto con el alias en inglés del grupo. Una página sirve cuando el candidato es el número de esa ficha. Si ninguna lo es, sirve una ficha de un solo producto del mismo grupo en la que el candidato aparece como intercambio. Ahí se leen aplicaciones, intercambios y especificaciones. Se guarda esa página, no una mezcla de fuentes.
+No hay una base de autopartes con una conexión clara para estas marcas. La investigación se hace en fichas públicas: se busca el símil entre comillas, junto con el alias en inglés del grupo. Una página sirve cuando el candidato está en el título, el encabezado o la dirección. Ahí se leen aplicaciones, intercambios y especificaciones, de las tablas o del `Product` de schema.org cuando la página no trae tablas. Se guarda esa página, no una mezcla de fuentes.
 
 Un número que no aparece, o que aparece en otra pieza distinta, no se publica.
 
@@ -107,7 +107,30 @@ Estas cinco piezas se leyeron en fichas públicas para saber qué se puede publi
 
 **SP26-329R/L+20.** Pistón Safety, mano derecha e izquierda, para Chevrolet Silverado y GMC Sierra 4.3 L OHV de 12 válvulas, 2014–2022. El sufijo `+20` se lee como sobremedida de 0.50 mm (+0.020 in); Safety no publica esa medida en la línea del catálogo y queda anotada como tal. No hubo intercambios confirmados. Fuente: catálogo web de Safety Auto Parts.
 
-**FSX-5840301.** Juego de empaques Fraco. Fraco publica la ficha como `FS5840301`; el Excel escribe `FSX-5840301`. Entra en Nissan 240SX, Silvia, Pathfinder, Pick Up D21, Terrano II y Vanette con motor KA24E 2.4 L. El intercambio confirmado es TF Victor `JC-20`. Atributos de la ficha: diámetro 89 mm, cilindrada 2389 cc, calibre de empaque de culata 1.3 mm, 12 válvulas, distribución SOHC. Fuentes: ficha PDF de Fraco y Dacomsa.
+**FSX-5840301.** Juego de empaques Fraco. Fraco publica la ficha como `FS5840301`; el Excel escribe `FSX-5840301`. Entra en Nissan 240SX, Silvia, Pathfinder, Pick Up D21, Terrano II y Vanette con motor KA24E 2.4 L. El intercambio confirmado es TF Victor `JC-20`. Atributos de la ficha: diámetro 89 mm, cilindrada 2389 cc, calibre de empaque de culata 1.3 mm, 12 válvulas, distribución SOHC. Fuentes: ficha PDF de Fraco y Dacomsa. Esa lectura a mano es más amplia que la primera página que acepta la búsqueda; el detalle está abajo.
+
+### Qué devolvió la búsqueda de FSX-5840301
+
+La consulta `"FSX-5840301" gasket set 1989 2003` devolvió ocho resultados. La página cuyo título, encabezado o dirección contiene `FS5840301` es la ficha de iMotriz del juego de empaques Fraco. Las otras eran fichas de iMotriz de otro número (`OS5840301` y `FS5840300`), una ficha de refa100 de `FSX-5840120`, y redirecciones de Google.
+
+Esa ficha no trae tablas. El número visible en el cuerpo está enmascarado (`FS58403**`). Lo legible está en el `Product` de schema.org, dentro de `script[type="application/ld+json"]`:
+
+- `sku` y `mpn` son `FS5840301`. El nombre es el producto. El párrafo anterior a «Aplicación y Compatibilidad» es la descripción.
+- La aplicación sale de esa frase. En esta ficha: Nissan D-21, desde 1993, sin año final y sin litros.
+- Los intercambios salen de `alternateName`, sin repetir el propio `sku`: `1010140F26`, `1010140F87` y `50241400`. La ficha no les pone marca. `JC-20` no está en esa lista.
+- No hay atributos. El diámetro, la cilindrada, el calibre, las válvulas y el SOHC están en el PDF de Fraco, y esta descarga no lo lee.
+
+Para no ajustar el lector a una sola frase, se compararon tres fichas de la misma plantilla. Las tres escriben la compatibilidad igual y cambian el detalle:
+
+| Ficha | Frase de compatibilidad |
+|---|---|
+| FS5840301 | Nissan: D-21 con motor KA24E (desde 1993) |
+| FS5840300 | Nissan: D21 y Busetón con motor TD27 de 2.7 L (años no especificados) |
+| OS5840301 | Nissan: Vanette (motor 2.4L KA24E SOHC) |
+
+El lector toma la marca antes de los dos puntos, parte los modelos en «y» o en coma, guarda «desde» como año inicial sin año final, guarda un `2.4L` o un `2.7 L` como litros, y deja el año vacío cuando la frase dice que no está especificado o cuando el motor va entre paréntesis. Una página que coincidió y no trae ni tablas ni esta frase no se publica.
+
+Parts Hawk publica aplicaciones, intercambios con marca y una tabla de especificaciones, como en la bomba Melling `M152`. En esa página `DM-152` aparece como intercambio. El título, el encabezado y la dirección dicen `M152`, así que esa página no entra para el candidato `DM-152`. El cuadro de las cinco piezas junta la lectura a mano de varias fuentes. La búsqueda guarda la primera página aceptada, y en `FSX-5840301` esa página es la de iMotriz.
 
 ### Números que no se publican
 
@@ -128,9 +151,9 @@ La primera vez que aparece un símil:
 
 1. Toma la línea ya guardada. La frase que se corta es `Descripcion`.
 2. Corta la frase, sin red. Una lista fija de marcas de vehículo marca el corte: Nissan, Chevrolet, GMC, Dodge, Jeep, Ram, Chrysler, Ford y GM. La comparación no distingue mayúsculas. El fabricante de la refacción (Rexite, Elgin, Safety, Fraco, Revo) no corta la frase. Lo que está antes de la primera marca son los candidatos a símil, de izquierda a derecha. El número de parte de la columna entra al final, por si ninguno de esos candidatos tiene página. Si la frase no trae ninguna marca de la lista, el primer candidato es el número de parte y después van los tokens de la frase que traen un dígito. Lo que está después de la marca —vehículo, motor, años, medida— es pista de búsqueda. No se publica como aplicación. Un sufijo de sobremedida (`+20`, `+0.50`) no es candidato: se busca el número sin esa cola. La sobremedida se guarda como atributo solo si la ficha no la trae.
-3. Busca el primer candidato en SerpApi, entre comillas, más el alias en inglés del grupo, más los años de la frase cuando los trae. Descarga las páginas en el orden que devuelve la búsqueda. Una página sirve cuando ese candidato, ya normalizado, es el número de la ficha. Si ninguna URL cumple eso, sirve una ficha de un solo producto del mismo grupo en la que el candidato aparece como intercambio. Si ninguna URL sirve, prueba el siguiente candidato. Las listas que se guardan son las de la página que sirvió. No se mezclan fuentes.
-4. Lee las tablas de la página que sirvió. Si no devuelven listas, una llamada a `gpt-6.1-sol` en effort medium, a través de RubyLLM, reescribe ese texto.
-5. Guarda la ficha y la pieza. Si ningún candidato dejó página, la ficha queda en `not_found`, con las listas vacías y `url` en `""`. Si SerpApi, la descarga o el modelo no responden, ese símil se intenta hasta tres veces en la misma corrida. Si las tres fallan, la ficha queda en `failed`, vacía, con `url` en `""`. Una búsqueda que sí respondió y no trajo ficha no se reintenta: eso es `not_found`.
+3. Busca el primer candidato en SerpApi, entre comillas, más el alias en inglés del grupo, más los años de la frase cuando los trae. Descarga las páginas en el orden que devuelve la búsqueda. Una página sirve cuando ese candidato, ya normalizado, está en el título, el encabezado o la dirección. Si ninguna URL sirve, prueba el siguiente candidato. Las listas que se guardan son las de la página que sirvió. No se mezclan fuentes.
+4. Lee las tablas de la página que sirvió. Si no hay tablas, lee el `Product` de schema.org con el patrón de las fichas de iMotriz de la sección anterior. Si tampoco hay aplicaciones, intercambios ni atributos, la página no se publica.
+5. Guarda la ficha y la pieza. Si ningún candidato dejó página con listas, la ficha queda en `not_found`, con las listas vacías y `url` en `""`. Si SerpApi o la descarga no responden, ese símil se intenta hasta tres veces en la misma corrida. Si las tres fallan, la ficha queda en `failed`, vacía, con `url` en `""`. Una búsqueda que sí respondió y no trajo ficha no se reintenta: eso es `not_found`.
 
 Dos números se comparan en mayúsculas y sin espacios, guiones, diagonales ni puntos. `9-0511S` y `90511S` son el mismo número. `SA-76260` y `76260` no lo son. `DM-152` y `M152` tampoco: son equivalentes, no dos escrituras. Si los dígitos son iguales, hay al menos cinco y la única diferencia es una letra de más en el prefijo, cuentan como el mismo número al aceptar la página. Así `FSX-5840301` acepta la ficha `FS5840301`. `152` no entra en esa segunda comparación. El `equivalent` que se guarda es el candidato tal como venía en la frase.
 
@@ -144,7 +167,7 @@ El alias del grupo sale de una tabla fija. No se traduce de nuevo en cada corrid
 | piston | piston |
 | empaque | gasket set |
 
-En `RM-152` la frase es `DM-152 NISSAN PICKUP L4 L6 1.8 2.4 2.0 KA24DE L20B DOHC SOHC 8V 12V 76/14` y el grupo es `BOMBA DE ACEITE`. El corte cae en Nissan, así que el candidato de la frase es `DM-152` y el número de parte `RM-152` queda al final. La consulta es `"DM-152" oil pump 1976 2014`. Esos años ayudan a elegir la página. Una ficha que trae el número y no repite los años no se descarta. Pickup, los litros, los códigos de motor y `76/14` no se escriben como filas. `76/14` queda dentro de la frase de la pieza. Los años que se guardan en `applications` son los de la ficha. Si ninguna página tiene `DM-152` como número de ficha, sirve la ficha de la bomba en la que `DM-152` es intercambio: Melling `M152`. El símil guardado sigue siendo `DM-152`.
+En `RM-152` la frase es `DM-152 NISSAN PICKUP L4 L6 1.8 2.4 2.0 KA24DE L20B DOHC SOHC 8V 12V 76/14` y el grupo es `BOMBA DE ACEITE`. El corte cae en Nissan, así que el candidato de la frase es `DM-152` y el número de parte `RM-152` queda al final. La consulta es `"DM-152" oil pump 1976 2014`. Esos años ayudan a elegir la página. Una ficha que trae el número y no repite los años no se descarta. Pickup, los litros, los códigos de motor y `76/14` no se escriben como filas. `76/14` queda dentro de la frase de la pieza. Los años que se guardan en `applications` son los de la ficha. La ficha Melling `M152` lista `DM-152` como intercambio; el título y la dirección dicen `M152`, así que esa página no se acepta para el candidato `DM-152`.
 
 Publicar no entra a internet. Lee `source_rows` para la hoja Origen, lee las demás tablas para el resto y escribe el archivo. La segunda corrida del mismo archivo, en la misma refaccionaria, encuentra el símil guardado y no vuelve a buscar, tampoco cuando el estado quedó en `not_found` o `failed`. Por eso las dos salen igual. Los tres intentos de una falla viven en esa investigación. Si el proceso muere a la mitad, al reiniciar se saltan los símiles ya guardados. Esos tres intentos no se multiplican con los reintentos del job.
 
@@ -336,7 +359,7 @@ Una fila por símil dentro de la refaccionaria. El código buscado identifica la
 | url | Página de donde se leyeron las listas. En `not_found` y `failed` queda `""` |
 | status | `created`, `not_found` o `failed` |
 
-`created` significa que la página se encontró y la ficha quedó generada. `not_found` significa que la búsqueda respondió y no hubo página: la ficha se guarda vacía, con `url` en `""`, y no se reintenta, porque la ausencia ya es la respuesta. `failed` significa que SerpApi, la descarga o el modelo no respondieron. El conteo de esos intentos vive en el código de la investigación, no en una columna: se prueba hasta tres veces en la misma corrida. Si las tres fallan, la ficha se guarda vacía, con `url` en `""` y estado `failed`. La siguiente corrida encuentra esa fila y no vuelve a llamar. La siguiente fila con ese símil, en la misma refaccionaria, tampoco vuelve a buscar. Dos refaccionarias pueden investigar el mismo símil: cada una guarda su ficha.
+`created` significa que la página se encontró, traía listas y la ficha quedó generada. `not_found` significa que la búsqueda respondió y no hubo página con listas: la ficha se guarda vacía, con `url` en `""`, y no se reintenta, porque la ausencia ya es la respuesta. `failed` significa que SerpApi o la descarga no respondieron. El conteo de esos intentos vive en el código de la investigación, no en una columna: se prueba hasta tres veces en la misma corrida. Si las tres fallan, la ficha se guarda vacía, con `url` en `""` y estado `failed`. La siguiente corrida encuentra esa fila y no vuelve a llamar. La siguiente fila con ese símil, en la misma refaccionaria, tampoco vuelve a buscar. Dos refaccionarias pueden investigar el mismo símil: cada una guarda su ficha.
 
 ### `parts`
 
@@ -429,17 +452,17 @@ La lógica vive en un solo objeto, fuera del controlador. Lo usa la página.
 
 Una página sube el Excel de una refaccionaria, deja revisar el resultado y devuelve el archivo generado. El usuario que entra gestiona una o varias refaccionarias. Dos corridas del mismo archivo, en la misma refaccionaria, tienen el mismo contenido, hoja por hoja.
 
-Para leer el Excel de origen se usa Roo. Para escribir el de salida, caxlsx. Para la llamada al modelo se usa RubyLLM. El intérprete local es Ruby 4.0.0. Roo y caxlsx cargan en esa versión.
+Para leer el Excel de origen se usa Roo. Para escribir el de salida, caxlsx. El intérprete local es Ruby 4.0.0. Roo y caxlsx cargan en esa versión.
 
 **Roo** lee `.xlsx`. La 4.0.0, del 22 de octubre de 2026, pide Ruby 3.3 o más nuevo. Su CI incluye 3.3, 3.4, 4.0, ruby-head y jruby-10. En el issue [#649](https://github.com/roo-rb/roo/issues/649), del 25 de octubre de 2026, la suite completa pasó en Ruby 4.0.9: 177 pruebas de Minitest y 253 de RSpec. Al cargar avisa, porque Ruby 4 sacó CGI de la biblioteca estándar y Roo todavía hace `require "cgi"` para `CGI.unescapeHTML`. El aviso no impide leer el archivo. Hay un arreglo abierto que propone `cgi/escape`.
 
 **caxlsx** escribe el Excel de seis hojas, en el orden del ejemplo: Origen, Métricas, Aplicaciones, Intercambios, Atributos y Catálogo. Hay que usar la **4.4.2** o una posterior. Esa versión salió el 23 de marzo de 2026 e incluye el pull request [#500](https://github.com/caxlsx/caxlsx/pull/500), «Add full Ruby 4.0 support». Ahí probaron el proyecto en Ruby 4.0.0 y cambiaron el `require` de `cgi` a `cgi/escape`, porque la gema solo usa `CGI.escapeHTML`. Con eso evitaron el aviso que Roo todavía muestra. El CI actual, en [`.github/workflows/test.yml`](https://github.com/caxlsx/caxlsx/blob/master/.github/workflows/test.yml), corre las pruebas en Ruby 4.0 en Ubuntu, macOS y Windows. El requisito publicado sigue siendo Ruby 2.6 o más nuevo. Una versión anterior puede cargar en Ruby 4 y dejar el aviso de `CGI`.
 
-**RubyLLM** llama al modelo. Entra solo cuando el código leyó la página que sirvió y sus tablas no devolvieron listas. La llamada es a `gpt-6.1-sol` con effort medium. No se arma a mano la petición HTTP. La clave va en `OPENAI_API_KEY`. El modelo no elige otra URL ni otra ficha. Si `gpt-6.1-sol` no está en el registro de la gema, se declara que el modelo existe para que la llamada salga a la red.
+**RubyLLM** queda fuera de esta lectura. `gpt-6.1-sol` no está disponible, y una página sin listas no se publica. Las listas salen de las tablas o del `Product` de schema.org, con el patrón de iMotriz descrito en «Qué devolvió la búsqueda de FSX-5840301».
 
 La base de datos es Postgres, con las tablas de la sección Modelado de datos. `source_rows` todavía no está creada. Publicar lee esas tablas y arma las fichas con sus tablas relacionadas. Esa vista es la pantalla y el Excel resultante. No hay un archivo de catálogo que la aplicación cargue en cada corrida, ni se vuelve a abrir el Excel de entrada.
 
-La búsqueda usa SerpApi, con el motor `google`, llamada con `Net::HTTP`. La clave va en `SERPAPI_API_KEY`. La lectura de la página la hace código. Si no obtiene listas, RubyLLM llama a `gpt-6.1-sol` en effort medium. La clave del modelo va en `OPENAI_API_KEY`. Si SerpApi, la descarga o el modelo no responden, el símil se intenta tres veces en esa misma investigación y, si las tres fallan, queda en `failed`. Un job que reinicia después de una caída no repite los símiles ya guardados y no vuelve a contar esos tres intentos.
+La búsqueda usa SerpApi, con el motor `google`, llamada con `Net::HTTP`. La clave va en `SERPAPI_API_KEY`. La lectura de la página la hace código: tablas, y si no hay, el `Product` de schema.org. Si esa lectura no deja listas, la ficha queda en `not_found`. Si SerpApi o la descarga no responden, el símil se intenta tres veces en esa misma investigación y, si las tres fallan, queda en `failed`. Un job que reinicia después de una caída no repite los símiles ya guardados y no vuelve a contar esos tres intentos.
 
 ### Métricas de una pieza desconocida
 
