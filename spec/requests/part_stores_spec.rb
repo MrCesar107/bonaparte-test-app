@@ -71,17 +71,40 @@ RSpec.describe "Part stores", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("newer-sheet")
-      expect(response.body).to include(%(class="block w-full min-w-0 overflow-x-auto" id="source_rows_#{newer.id}" src="#{datasheet_source_rows_path(newer)}"))
+      expect(response.body).to include(%(id="datasheet_#{newer.id}"))
       expect(response.body).to include("older-sheet")
+      expect(response.body).to include("Procesando")
+      expect(response.body).to include('data-controller="datasheet-status"')
+      expect(response.body).not_to include("other-sheet")
+      expect(response.body).not_to include("fa-chevron-right")
+      expect(response.body).not_to include("Origen")
+      expect(response.body.index("newer-sheet")).to be < response.body.index("older-sheet")
+    end
+
+    it "shows a chevron that toggles the sections once the datasheet is ready" do
+      part_store = create(:part_store, name: "North Garage")
+      datasheet = create(:datasheet, part_store: part_store, status: :created)
+      datasheet.update_columns(name: "ready-sheet")
+
+      get part_store_path(part_store)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("ready-sheet")
+      expect(response.body).to include("fa-chevron-right")
+      expect(response.body).to include('data-controller="datasheet-card"')
+      expect(response.body).to include('data-open="false"')
+      expect(response.body).to include('data-action="datasheet-card#toggle"')
+      expect(response.body).to include("transition-[height]")
+      expect(response.body).to include("group-data-[open=true]:rotate-90")
+      expect(response.body).to include(%(class="block w-full min-w-0 overflow-x-auto" id="source_rows_#{datasheet.id}" src="#{datasheet_source_rows_path(datasheet)}"))
       expect(response.body).to include("Origen")
       expect(response.body).to include("Métricas")
       expect(response.body).to include("Aplicaciones")
       expect(response.body).to include("Intercambios")
       expect(response.body).to include("Atributos")
       expect(response.body).to include("Catálogo")
-      expect(response.body).not_to include("other-sheet")
-      expect(response.body).not_to include("fa-chevron-right")
-      expect(response.body.index("newer-sheet")).to be < response.body.index("older-sheet")
+      expect(response.body).not_to include("Procesando")
+      expect(response.body).not_to include("datasheet-status")
     end
 
     it "leaves researched similars off the catalog list" do

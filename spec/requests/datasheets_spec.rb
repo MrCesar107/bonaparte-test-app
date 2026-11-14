@@ -64,6 +64,61 @@ RSpec.describe "Datasheets", type: :request do
     end
   end
 
+  describe "GET /datasheets/:id" do
+    let(:user) { create(:user) }
+
+    before { sign_in user }
+
+    it "renders a processing frame without the chevron or sections" do
+      datasheet = create(:datasheet, status: :pending)
+      datasheet.update_columns(name: "pending-sheet")
+
+      get datasheet_path(datasheet)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(id="datasheet_#{datasheet.id}"))
+      expect(response.body).to include("pending-sheet")
+      expect(response.body).to include("Procesando")
+      expect(response.body).to include('data-controller="datasheet-status"')
+      expect(response.body).to include(%(data-datasheet-status-url-value="#{datasheet_path(datasheet)}"))
+      expect(response.body).not_to include("fa-chevron-right")
+      expect(response.body).not_to include("Origen")
+      expect(response.body).not_to include('src="')
+    end
+
+    it "renders the chevron and collapsed sections when the datasheet is ready" do
+      datasheet = create(:datasheet, status: :created)
+      datasheet.update_columns(name: "ready-sheet")
+
+      get datasheet_path(datasheet)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("ready-sheet")
+      expect(response.body).to include("fa-chevron-right")
+      expect(response.body).to include('data-action="datasheet-card#toggle"')
+      expect(response.body).to include('data-open="false"')
+      expect(response.body).to include("transition-[height]")
+      expect(response.body).to include("group-data-[open=true]:rotate-90")
+      expect(response.body).to include("Origen")
+      expect(response.body).not_to include("Procesando")
+      expect(response.body).not_to include("datasheet-status")
+    end
+
+    it "renders a finished message without sections when processing fails" do
+      datasheet = create(:datasheet, status: :failed)
+      datasheet.update_columns(name: "failed-sheet")
+
+      get datasheet_path(datasheet)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("failed-sheet")
+      expect(response.body).to include("No se pudo procesar")
+      expect(response.body).not_to include("fa-chevron-right")
+      expect(response.body).not_to include("datasheet-status")
+      expect(response.body).not_to include("Origen")
+    end
+  end
+
   def uploaded_csv
     file = Tempfile.new([ "catalog", ".csv" ])
     file.write("equivalent,url\n")

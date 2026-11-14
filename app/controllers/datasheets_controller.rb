@@ -19,6 +19,10 @@ class DatasheetsController < ApplicationController
   def new
   end
 
+  def show
+    render partial: "datasheet", locals: { datasheet: Datasheet.find(params[:id]) }
+  end
+
   private
 
   def part_store
