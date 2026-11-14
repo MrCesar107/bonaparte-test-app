@@ -1,0 +1,28 @@
+<%= turbo_frame_tag "catalog_rows_#{@datasheet.id}", class: "block w-full min-w-0 overflow-x-auto" do %>
+  <table class="w-max min-w-full whitespace-nowrap border-collapse">
+    <thead class="border-b border-gray-300">
+      <tr>
+        <th class="p-2 text-left">Reference</th>
+        <th class="p-2 text-left">Brand</th>
+        <th class="p-2 text-left">Category</th>
+        <th class="p-2 text-left">System</th>
+        <th class="p-2 text-left">Subsystem</th>
+        <th class="p-2 text-left">Product</th>
+        <th class="p-2 text-left">Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @view.catalog.each do |row| %>
+        <tr class="border-b border-gray-300 odd:bg-gray-100">
+          <td class="p-2 text-left"><%= row.reference %></td>
+          <td class="p-2 text-left"><%= row.brand %></td>
+          <td class="p-2 text-left"><%= row.category %></td>
+          <td class="p-2 text-left"><%= row.vehicle_system %></td>
+          <td class="p-2 text-left"><%= row.subsystem %></td>
+          <td class="p-2 text-left"><%= row.product %></td>
+          <td class="p-2 text-left"><%= row.description %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
