@@ -43,6 +43,9 @@
       <div class="hidden p-4 border-l border-b border-r border-gray-300" data-tabs-target="panel">
         <%= turbo_frame_tag "interchanges_#{datasheet.id}", src: datasheet_interchanges_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
       </div>
+      <div class="hidden p-4 border-l border-b border-r border-gray-300" data-tabs-target="panel">
+        <%= turbo_frame_tag "attributes_#{datasheet.id}", src: datasheet_attributes_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
+      </div>
     </div>
   </div>
 </div>
