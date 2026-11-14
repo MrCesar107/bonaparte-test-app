@@ -1,6 +1,5 @@
 require "net/http"
 
-class Datasheet::Research::Unavailable < StandardError; end
 class Datasheet::Research::OutOfCredits < StandardError; end
 
 class Datasheet::Research::SerpApiSearch

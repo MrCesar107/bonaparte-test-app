@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "rubyllm": {
+      "source": "~/.rbenv/versions/4.0.0/lib/ruby/gems/4.0.0/gems/ruby_llm-2.2.0",
+      "ref": null,
+      "ref_type": "local",
+      "commit": null,
+      "path": "skills/rubyllm",
+      "digest": "sha256-3dc9382b949663222bfa5d53cb0ab681e467e64586dcef01519d42a2f70e1e3e",
+      "executable": false,
+      "targets": [
+        ".agents/skills"
+      ]
+    }
+  }
+}
