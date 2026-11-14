@@ -76,6 +76,12 @@
                 <%= turbo_frame_tag "catalog_rows_#{datasheet.id}", src: datasheet_catalog_rows_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
               </div>
             </div>
+            <div class="mt-4 flex justify-end">
+              <%= link_to "Download Excel",
+                    datasheet_export_path(datasheet),
+                    class: "bg-orange-400 hover:bg-orange-500 cursor-pointer text-white px-4 py-2 rounded-full",
+                    data: { turbo: false } %>
+            </div>
           </div>
         </div>
       </div>

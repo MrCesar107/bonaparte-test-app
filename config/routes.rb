@@ -20,6 +20,7 @@ Rails.application.routes.draw do
   resources :dashboard, only: %i[index]
   resources :part_stores, only: %i[new create show edit update destroy]
   resources :datasheets, only: %i[create new show] do
+    resource :export, only: :show, controller: "datasheets/exports"
     resources :source_rows, only: %i[index], controller: "datasheets/source_rows"
     resource :metrics, only: %i[show], controller: "datasheets/metrics"
     resources :applications, only: %i[index], controller: "datasheets/applications"

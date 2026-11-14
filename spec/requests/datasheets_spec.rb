@@ -78,7 +78,7 @@ RSpec.describe "Datasheets", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(%(id="datasheet_#{datasheet.id}"))
       expect(response.body).to include("pending-sheet")
-      expect(response.body).to include("Procesando")
+      expect(response.body).to include("Generating")
       expect(response.body).to include('data-controller="datasheet-status"')
       expect(response.body).to include(%(data-datasheet-status-url-value="#{datasheet_path(datasheet)}"))
       expect(response.body).not_to include("fa-chevron-right")
@@ -100,7 +100,11 @@ RSpec.describe "Datasheets", type: :request do
       expect(response.body).to include("transition-[height]")
       expect(response.body).to include("group-data-[open=true]:rotate-90")
       expect(response.body).to include("Origen")
-      expect(response.body).not_to include("Procesando")
+      expect(response.body).to include("Download Excel")
+      expect(response.body).to include(%(href="#{datasheet_export_path(datasheet)}"))
+      expect(response.body).to include('data-turbo="false"')
+      expect(response.body).to include("bg-orange-400")
+      expect(response.body).not_to include("Generating")
       expect(response.body).not_to include("datasheet-status")
     end
 
@@ -116,6 +120,48 @@ RSpec.describe "Datasheets", type: :request do
       expect(response.body).not_to include("fa-chevron-right")
       expect(response.body).not_to include("datasheet-status")
       expect(response.body).not_to include("Origen")
+      expect(response.body).not_to include("Download Excel")
+    end
+  end
+
+  describe "GET /datasheets/:id/export" do
+    let(:user) { create(:user) }
+    let(:part_store) { create(:part_store, name: "North Garage") }
+    let(:datasheet) { create(:datasheet, part_store: part_store, status: :created) }
+
+    before { sign_in user }
+
+    it "downloads the datasheet workbook" do
+      sheet = create(:datasheet, part_store: part_store, equivalent: "DM-152", status: :created, url: "https://example.test")
+      create(
+        :part,
+        datasheet: sheet,
+        part_reference: "RM-152",
+        phrase: "DM-152 NISSAN PICKUP",
+        brand: "Rexite",
+        product: "Bomba de aceite"
+      )
+      create(
+        :source_row,
+        datasheet: datasheet,
+        internal_code: "14481",
+        part_number: "RM-152",
+        description: "DM-152 NISSAN PICKUP",
+        article_description: "BOMBA"
+      )
+      datasheet.update_columns(name: "ready-sheet")
+
+      get datasheet_export_path(datasheet)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+      expect(response.headers["Content-Disposition"]).to include("attachment")
+      expect(response.headers["Content-Disposition"]).to include("ready-sheet.xlsx")
+
+      spreadsheet = Roo::Spreadsheet.open(StringIO.new(response.body), extension: :xlsx)
+      expect(spreadsheet.sheets).to eq([ "Origen", "Métricas", "Aplicaciones", "Intercambios", "Atributos", "Catálogo" ])
+      expect(spreadsheet.sheet("Origen").row(2)).to include("14481", "RM-152", "BOMBA")
+      expect(spreadsheet.sheet("Catálogo").row(2)).to include("RM-152", "Rexite", "Bomba de aceite")
     end
   end
 

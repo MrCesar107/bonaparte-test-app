@@ -73,7 +73,7 @@ RSpec.describe "Part stores", type: :request do
       expect(response.body).to include("newer-sheet")
       expect(response.body).to include(%(id="datasheet_#{newer.id}"))
       expect(response.body).to include("older-sheet")
-      expect(response.body).to include("Procesando")
+      expect(response.body).to include("Generating")
       expect(response.body).to include('data-controller="datasheet-status"')
       expect(response.body).not_to include("other-sheet")
       expect(response.body).not_to include("fa-chevron-right")
@@ -103,7 +103,9 @@ RSpec.describe "Part stores", type: :request do
       expect(response.body).to include("Intercambios")
       expect(response.body).to include("Atributos")
       expect(response.body).to include("Catálogo")
-      expect(response.body).not_to include("Procesando")
+      expect(response.body).to include("Download Excel")
+      expect(response.body).to include(%(href="#{datasheet_export_path(datasheet)}"))
+      expect(response.body).not_to include("Generating")
       expect(response.body).not_to include("datasheet-status")
     end
 
