@@ -1,0 +1,44 @@
+<%= turbo_frame_tag "applications_#{@datasheet.id}", class: "block w-full min-w-0 overflow-x-auto" do %>
+  <table class="w-max min-w-full whitespace-nowrap border-collapse">
+    <thead class="border-b border-gray-300">
+      <tr>
+        <th class="p-2 text-left">Reference</th>
+        <th class="p-2 text-left">Brand</th>
+        <th class="p-2 text-left">Product</th>
+        <th class="p-2 text-left">Position</th>
+        <th class="p-2 text-left">Manufacturer</th>
+        <th class="p-2 text-left">Model</th>
+        <th class="p-2 text-left">Submodel</th>
+        <th class="p-2 text-left">Year</th>
+        <th class="p-2 text-left">Liters</th>
+        <th class="p-2 text-left">CC</th>
+        <th class="p-2 text-left">CID</th>
+        <th class="p-2 text-left">Cylinders</th>
+        <th class="p-2 text-left">Block</th>
+        <th class="p-2 text-left">Fuel</th>
+        <th class="p-2 text-left">Market</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @view.applications.each do |row| %>
+        <tr class="border-b border-gray-300 odd:bg-gray-100">
+          <td class="p-2 text-left"><%= row.reference %></td>
+          <td class="p-2 text-left"><%= row.brand %></td>
+          <td class="p-2 text-left"><%= row.product %></td>
+          <td class="p-2 text-left"><%= row.position %></td>
+          <td class="p-2 text-left"><%= row.manufacturer %></td>
+          <td class="p-2 text-left"><%= row.model %></td>
+          <td class="p-2 text-left"><%= row.submodel %></td>
+          <td class="p-2 text-left"><%= row.year %></td>
+          <td class="p-2 text-left"><%= row.liters %></td>
+          <td class="p-2 text-left"><%= row.engine_cc %></td>
+          <td class="p-2 text-left"><%= row.engine_cid %></td>
+          <td class="p-2 text-left"><%= row.engine_cylinders %></td>
+          <td class="p-2 text-left"><%= row.block %></td>
+          <td class="p-2 text-left"><%= row.fuel_type %></td>
+          <td class="p-2 text-left"><%= row.market %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
