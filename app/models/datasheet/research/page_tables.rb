@@ -19,19 +19,13 @@ class Datasheet::Research::PageTables
 
   def call
     lists = table_lists
-    return lists if product_node.nil?
-
-    lists = lists.with(
-      part_number: lists.part_number.presence || product_node["sku"].presence || product_node["mpn"].to_s,
-      product: lists.product.presence || product_node["name"].to_s.squish,
-      description: lists.description.presence || commercial_text(product_node["description"])
-    )
+    lists = schema_lists(lists) if product_node
     return lists if lists.applications.any? || lists.interchanges.any? || lists.attributes.any?
 
-    lists.with(
-      applications: compatibility_rows(product_node["description"]),
-      interchanges: product_interchanges(product_node)
-    )
+    rows = fits_rows
+    return lists if rows.empty?
+
+    lists.with(applications: rows)
   end
 
   def any?
@@ -80,6 +74,50 @@ class Datasheet::Research::PageTables
     items.find { |item| item.is_a?(Hash) && Array(item["@type"]).join(" ").match?(/Product/i) }
   rescue JSON::ParserError
     nil
+  end
+
+  def schema_lists(lists)
+    lists = lists.with(
+      part_number: lists.part_number.presence || product_node["sku"].presence || product_node["mpn"].to_s,
+      product: lists.product.presence || product_node["name"].to_s.squish,
+      description: lists.description.presence || commercial_text(product_node["description"])
+    )
+    return lists if lists.applications.any? || lists.interchanges.any? || lists.attributes.any?
+
+    lists.with(
+      applications: compatibility_rows(product_node["description"]),
+      interchanges: product_interchanges(product_node)
+    )
+  end
+
+  def fits_rows
+    sentence = document.text[/Fits:\s*(.+?)\./i, 1].to_s
+    sentence.split(";").flat_map { |clause| fits_clause(clause.squish) }
+  end
+
+  def fits_clause(clause)
+    brands = Datasheet::Research::Phrase::VEHICLE_BRANDS.join("|")
+    match = clause.match(/\A(?<years>.*?)\b(?<brand>#{brands})\b\s*(?<model>.+?)\s*\z/i)
+    return [] unless match
+
+    model = match[:model].sub(/\.\z/, "").squish
+    label = Datasheet::Research::Phrase::BRAND_LABELS[match[:brand].downcase]
+    year_spans(match[:years]).filter_map do |start_year, end_year|
+      next if model.blank? || label.blank?
+
+      application_row(label, model, start_year, end_year)
+    end
+  end
+
+  def year_spans(text)
+    text.to_s.scan(/\b(\d{4})(?:\s*-\s*(\d{4}))?\b/).map { |start_year, end_year| [ start_year, end_year.to_s ] }
+  end
+
+  def application_row(manufacturer, model, start_year, end_year)
+    Datasheet::Research::PageLists::ApplicationRow.new(
+      manufacturer: manufacturer, model: model, submodel: "", start_year: start_year, end_year: end_year,
+      liters: "", engine_cc: "", engine_cid: "", engine_cylinders: "", block: "", fuel_type: "", market: ""
+    )
   end
 
   def commercial_text(text)

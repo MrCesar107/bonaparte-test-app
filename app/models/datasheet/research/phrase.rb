@@ -1,10 +1,24 @@
 class Datasheet::Research::Phrase
   VEHICLE_BRANDS = %w[nissan chevrolet gmc dodge jeep ram chrysler ford gm].freeze
+  BRAND_LABELS = {
+    "nissan" => "Nissan",
+    "chevrolet" => "Chevrolet",
+    "gmc" => "GMC",
+    "dodge" => "Dodge",
+    "jeep" => "Jeep",
+    "ram" => "Ram",
+    "chrysler" => "Chrysler",
+    "ford" => "Ford",
+    "gm" => "GM"
+  }.freeze
   GROUP_ALIASES = {
     "bomba de aceite" => "oil pump",
     "cadena de tiempo" => "timing chain kit",
+    "kit de distribucion" => "timing chain kit",
     "punteria hidraulica" => "hydraulic lifter",
+    "punteria" => "lifter",
     "piston" => "piston",
+    "juego de empaque" => "full gasket set",
     "empaque" => "gasket set"
   }.freeze
 
@@ -17,7 +31,8 @@ class Datasheet::Research::Phrase
     return false if compact_left.empty? || compact_right.empty?
     return true if compact_left == compact_right
 
-    prefix_letter_variant?(compact_left, compact_right)
+    prefix_letter_variant?(compact_left, compact_right) ||
+      suffix_letter_variant?(compact_left, compact_right)
   end
 
   def initialize(description:, part_number:, item_group:)
@@ -67,6 +82,16 @@ class Datasheet::Research::Phrase
         without_letter.slice!(index)
         without_letter == shorter
       end
+    end
+
+    def suffix_letter_variant?(left, right)
+      longer, shorter = [ left, right ].sort_by(&:length).reverse
+      return false unless longer.start_with?(shorter)
+
+      extra = longer.delete_prefix(shorter)
+      return false unless extra.match?(/\A[A-Z]+\z/)
+
+      shorter.gsub(/\D/, "").length >= 5
     end
   end
 
@@ -153,6 +178,19 @@ class Datasheet::Research::Phrase
   end
 
   def query_for(candidate)
-    [ %("#{candidate}"), group_alias, *years ].compact_blank.join(" ")
+    [ %("#{candidate}"), vehicle_brand, group_alias, year_range ].compact_blank.join(" ")
+  end
+
+  def vehicle_brand
+    return if brand_index.nil?
+
+    BRAND_LABELS[tokens[brand_index].downcase]
+  end
+
+  def year_range
+    return if years.empty?
+    return years.first if years.one?
+
+    "#{years.first}-#{years.last}"
   end
 end

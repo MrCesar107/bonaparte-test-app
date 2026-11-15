@@ -21,6 +21,7 @@ class Datasheet::Research::SerpApiSearch
 
     raise Datasheet::Research::OutOfCredits if out_of_credits?(response, payload)
     raise Datasheet::Research::Unavailable unless response.is_a?(Net::HTTPSuccess)
+    return [] if no_results?(payload)
     raise Datasheet::Research::Unavailable if payload["error"].present?
 
     Array(payload["organic_results"]).filter_map { |result| result["link"] }
@@ -32,5 +33,9 @@ class Datasheet::Research::SerpApiSearch
 
   def out_of_credits?(response, payload)
     response.code == "429" || payload["error"].to_s.match?(/run out of searches/i)
+  end
+
+  def no_results?(payload)
+    payload["error"].to_s.match?(/hasn.t returned any results/i)
   end
 end

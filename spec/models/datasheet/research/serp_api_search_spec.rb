@@ -59,9 +59,23 @@ RSpec.describe Datasheet::Research::SerpApiSearch do
       }.to raise_error(Datasheet::Research::Unavailable)
     end
 
+    it "returns no links when Google has no results for the query" do
+      account = instance_double(Datasheet::Research::SerpApiAccount, searches_left: 250)
+      response = http_response(
+        code: "200",
+        success: true,
+        body: { "error" => "Google hasn't returned any results for this query." }.to_json
+      )
+      allow(Net::HTTP).to receive(:get_response).and_return(response)
+
+      links = described_class.new(api_key: "test-key", account: account).call("HL7011")
+
+      expect(links).to eq([])
+    end
+
     it "raises when Google answers with another error" do
       account = instance_double(Datasheet::Research::SerpApiAccount, searches_left: 250)
-      response = http_response(code: "200", success: true, body: { "error" => "Google hasn't returned any results for this query." }.to_json)
+      response = http_response(code: "200", success: true, body: { "error" => "Something went wrong." }.to_json)
       allow(Net::HTTP).to receive(:get_response).and_return(response)
 
       expect {

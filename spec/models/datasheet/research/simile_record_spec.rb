@@ -45,7 +45,7 @@ RSpec.describe Datasheet::Research::SimileRecord do
 
       sheet = part_store.datasheets.find_by!(equivalent: "DM-152")
 
-      expect(sheet).to have_attributes(url: "", status: "not_found")
+      expect(sheet).to have_attributes(url: "https://parts.test/dm-152", status: "not_found")
       expect(sheet.applications).to be_empty
       expect(sheet.interchanges).to be_empty
       expect(sheet.part_attributes).to be_empty

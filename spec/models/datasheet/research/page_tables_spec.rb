@@ -97,6 +97,22 @@ RSpec.describe Datasheet::Research::PageTables do
       expect(lists.interchanges).to be_empty
     end
 
+    it "reads one application per year span from a Fits sentence" do
+      html = <<~HTML
+        <script type="application/json">
+          {"description":"Kit Contains: Timing Chain (3). Fits: 2011, 2013-2014 Chrysler Town & Country; 2014-2022 Dodge Challenger."}
+        </script>
+      HTML
+
+      lists = described_class.new(html).call
+
+      expect(lists.applications.map { |row| [ row.manufacturer, row.model, row.start_year, row.end_year ] }).to eq([
+        [ "Chrysler", "Town & Country", "2011", "" ],
+        [ "Chrysler", "Town & Country", "2013", "2014" ],
+        [ "Dodge", "Challenger", "2014", "2022" ]
+      ])
+    end
+
     it "returns empty lists when the page has no matching tables" do
       lists = described_class.new("<p>sin tablas</p>").call
 

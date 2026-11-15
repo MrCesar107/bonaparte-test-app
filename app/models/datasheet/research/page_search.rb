@@ -11,32 +11,33 @@ class Datasheet::Research::PageSearch
   end
 
   def call
-    ATTEMPTS.times do
-      result = attempt
-      return result unless result == :retry
+    answered = false
+
+    @phrase.candidates.each do |candidate|
+      result = search_candidate(candidate)
+      return result if result == :out_of_credits || result.is_a?(Hit)
+
+      answered = true if result == :not_found
     end
 
-    :failed
+    answered ? :not_found : :failed
   end
 
   private
 
-  def attempt
-    download_failed = false
-
-    @phrase.candidates.each do |candidate|
+  def search_candidate(candidate)
+    ATTEMPTS.times do
       urls = search_urls(candidate)
-      return urls if urls.is_a?(Symbol)
+      return :out_of_credits if urls == :out_of_credits
+      next if urls == :retry
 
       pages, failed = pages_for(urls)
-      download_failed ||= failed
-      hit = part_number_hit(candidate, pages)
-      return hit if hit
+      found = part_number_hit(candidate, pages)
+      return found if found
+      return :not_found unless failed
     end
 
-    return :retry if download_failed
-
-    :not_found
+    :failed
   end
 
   def search_urls(candidate)

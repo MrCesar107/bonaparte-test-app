@@ -49,15 +49,15 @@ El corte no usa red. La primera marca de vehículo parte la frase. La lista fija
 
 En `RM-152` la frase `DM-152 NISSAN PICKUP ... 76/14` y el grupo `BOMBA DE ACEITE` dejan el candidato `DM-152` y, al final, `RM-152`.
 
-La consulta del candidato es el número entre comillas, el alias en inglés del grupo y los años de la frase cuando existan. Para esa fila: `"DM-152" oil pump 1976 2014`. Una ficha que trae el número y no repite los años se acepta igual. Los años que se guardan en `applications` son los de la ficha.
+La consulta del candidato es el número entre comillas, la marca del vehículo, el alias en inglés del grupo y los años de la frase como un rango. Para esa fila: `"DM-152" Nissan oil pump 1976-2014`. Una ficha que trae el número y no repite los años se acepta igual. Los años que se guardan en `applications` son los de la ficha.
 
-El alias sale de la tabla fija del alcance. La clave se compara sin mayúsculas ni acentos y gana la más larga que el grupo contenga: bomba de aceite, cadena de tiempo, punteria hidraulica, piston, empaque. Un token `76/14` se abre en dos años de cuatro dígitos: `00`–`49` hacia `2000` y `50`–`99` hacia `1900`, así `76/14` queda `1976 2014`. Un año que ya trae cuatro dígitos pasa igual.
+El alias sale de la tabla fija del alcance. La clave se compara sin mayúsculas ni acentos y gana la más larga que el grupo contenga: bomba de aceite, cadena de tiempo, kit de distribucion, punteria hidraulica, punteria, piston, juego de empaque, empaque. Un token `76/14` se abre en dos años de cuatro dígitos: `00`–`49` hacia `2000` y `50`–`99` hacia `1900`, y la consulta los escribe `1976-2014`. Un año que ya trae cuatro dígitos pasa igual.
 
 ## 4. Aceptar una sola página
 
 Se prueba el primer candidato. SerpApi devuelve el orden de Google. Se descargan esas páginas en ese orden.
 
-Dos números se comparan en mayúsculas y sin espacios, guiones, diagonales ni puntos. `9-0511S` y `90511S` coinciden. `SA-76260` y `76260` no. `DM-152` y `M152` no: son equivalentes, no dos escrituras. Si los dígitos son iguales, hay al menos cinco y la única diferencia es una letra de más en el prefijo, cuentan como el mismo número al aceptar la página. Así `FSX-5840301` acepta `FS5840301`. `152` no entra en esa segunda comparación.
+Dos números se comparan en mayúsculas y sin espacios, guiones, diagonales ni puntos. `9-0511S` y `90511S` coinciden. `SA-76260` y `76260` no. `DM-152` y `M152` no: son equivalentes, no dos escrituras. Si los dígitos son iguales, hay al menos cinco y la única diferencia es una letra de más en el prefijo, cuentan como el mismo número al aceptar la página. Así `FSX-5840301` acepta `FS5840301`. También cuenta un sufijo de solo letras sobre la misma base, con al menos cinco dígitos: `9-0511S` acepta `9-0511SX` y `9-0511SVVT`. `152` no entra en esas comparaciones.
 
 Una página sirve cuando el candidato, ya comparado así, está en el título, el encabezado `h1` o la dirección. Una mención en el cuerpo no alcanza. En la bomba, Parts Hawk publica la ficha Melling `M152` y lista `DM-152` como intercambio; el título y la dirección dicen `M152`, así que esa página no entra para `DM-152`. Si ninguna URL sirve, se prueba el siguiente candidato.
 
@@ -74,7 +74,9 @@ Si no hay tablas, lee el `Product` de schema.org. El hallazgo está en [alcance.
 - Los intercambios salen de `alternateName`, sin repetir el propio `sku`. Si la frase «Referencias equivalentes / Intercambios» trae números, también entran. La ficha de iMotriz no les pone marca, así que la procedencia queda `Aftermarket`.
 - En `FS5840301` eso publica Nissan D-21 desde 1993 y los intercambios `1010140F26`, `1010140F87` y `50241400`. No publica atributos ni `JC-20`: eso está en el PDF de Fraco, que esta descarga no lee.
 
-Los otros resultados de esa consulta no enseñaron otro patrón: fichas de otro número, una página de refa100 de `FSX-5840120` y redirecciones de Google. Una página aceptada sin tablas y sin esta frase no se publica. `gpt-6.1-sol` no rellena ese vacío.
+Los otros resultados de esa consulta no enseñaron otro patrón: fichas de otro número, una página de refa100 de `FSX-5840120` y redirecciones de Google.
+
+La consulta `"9-0511S" Chrysler timing chain kit 2011-2013` aceptó una ficha de Cloyes `90511S` cuya descripción trae `Fits:`. Cada tramo, separado por punto y coma, empieza con años y termina con una marca de la lista y el modelo. Un año suelto deja `end_year` vacío. `2011, 2013-2014 Chrysler Town & Country` son dos aplicaciones, 2011 y 2013–2014, no un rango 2011–2014. Una página aceptada sin tablas y sin estas frases no se publica. `gpt-6.1-sol` no rellena ese vacío.
 
 De cada aplicación se guardan fabricante, modelo, submodelo, vigencia, litros, `engine_cc`, `engine_cid`, `engine_cylinders`, bloque, `fuel_type` y mercado. La vigencia es `start_year` y `end_year`; un rango no se abre en una fila por año. Si la ficha dice «desde 2007» y no hay año final, `end_year` queda vacío y el modelo se guarda tal cual. La posición queda vacía. CC y CID se copian como vienen en la ficha.
 
@@ -89,7 +91,7 @@ Los códigos de la frase que esa página no confirmó van a `parts.unconfirmed_t
 En la misma escritura quedan la ficha, sus listas y la pieza.
 
 - `created`: había página con listas. `url` es esa página. La pieza guarda referencia en `part_reference`, frase, huella, marca, grupo, categoría `Vehículo ligero`, sistema `Motor`, y el subsistema, producto y descripción leídos una sola vez.
-- `not_found`: SerpApi respondió y ningún candidato dejó página con listas. Listas vacías, `url` en `""`, y el `equivalent` es el primer candidato. No se reintenta.
+- `not_found`: SerpApi respondió y ningún candidato dejó página con listas. Las listas quedan vacías y no se reintenta. Si una página coincidió por el número, `url` guarda esa dirección y el `equivalent` es el candidato que coincidió. Si ninguna coincidió, `url` queda en `""` y el `equivalent` es el primer candidato.
 - `failed`: SerpApi o la descarga no respondieron en los tres intentos de esa investigación. Listas vacías y `url` en `""`. [app/models/datasheet.rb](../app/models/datasheet.rb) ya exige `url`, así que el vacío es `""` y no `nil`.
 
 `url` vacío cumple la validación de presencia porque es una cadena vacía, no un nulo. La pieza de una ficha vacía se guarda para recordar la huella; al publicar no genera Catálogo, Aplicaciones, Intercambios ni Atributos. Eso lo hará la publicación, no esta búsqueda.

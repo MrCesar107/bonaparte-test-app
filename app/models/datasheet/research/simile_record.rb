@@ -31,7 +31,7 @@ class Datasheet::Research::SimileRecord
   end
 
   def url
-    return @result.url if publishable?
+    return @result.url if hit? && !@model_failed
 
     ""
   end

@@ -5,7 +5,7 @@ RSpec.describe Datasheet::Research::PageSearch do
     it "accepts the part number page before an earlier interchange page" do
       interchange = page(url: "https://parts.test/m152", part_number: "M152", interchange_numbers: [ "DM-152" ])
       match = page(url: "https://parts.test/dm-152", part_number: "DM-152", body: "ficha DM-152")
-      search = search_returning('"DM-152" oil pump 1976 2014' => [ interchange.url, match.url ])
+      search = search_returning('"DM-152" Nissan oil pump 1976-2014' => [ interchange.url, match.url ])
       fetch = fetch_returning(interchange, match)
 
       hit = search_pages(search:, fetch:)
@@ -17,8 +17,8 @@ RSpec.describe Datasheet::Research::PageSearch do
     it "does not accept an interchange page unless the candidate is in the title, heading, or address" do
       melling = page(url: "https://parts.test/m152", part_number: "M152", interchange_numbers: [ "DM-152" ], body: "<title>M152 Oil Pump</title>")
       search = search_returning(
-        '"DM-152" oil pump 1976 2014' => [ melling.url ],
-        '"RM-152" oil pump 1976 2014' => []
+        '"DM-152" Nissan oil pump 1976-2014' => [ melling.url ],
+        '"RM-152" Nissan oil pump 1976-2014' => []
       )
       fetch = fetch_returning(melling)
 
@@ -31,7 +31,7 @@ RSpec.describe Datasheet::Research::PageSearch do
         part_number: "",
         body: "<title>DM-152 Oil Pump</title><p>fits trucks</p>"
       )
-      search = search_returning('"DM-152" oil pump 1976 2014' => [ match.url ])
+      search = search_returning('"DM-152" Nissan oil pump 1976-2014' => [ match.url ])
       fetch = fetch_returning(match)
 
       hit = search_pages(search:, fetch:)
@@ -47,8 +47,8 @@ RSpec.describe Datasheet::Research::PageSearch do
         interchange_numbers: [ "XX-1" ]
       )
       search = search_returning(
-        '"DM-152" oil pump 1976 2014' => [ other.url ],
-        '"RM-152" oil pump 1976 2014' => []
+        '"DM-152" Nissan oil pump 1976-2014' => [ other.url ],
+        '"RM-152" Nissan oil pump 1976-2014' => []
       )
       fetch = fetch_returning(other)
 
@@ -57,7 +57,7 @@ RSpec.describe Datasheet::Research::PageSearch do
 
     it "keeps a later page when an earlier download does not respond" do
       match = page(url: "https://parts.test/dm-152", part_number: "DM-152", body: "ficha DM-152")
-      search = search_returning('"DM-152" oil pump 1976 2014' => [ "https://parts.test/down", match.url ])
+      search = search_returning('"DM-152" Nissan oil pump 1976-2014' => [ "https://parts.test/down", match.url ])
       fetch = instance_double(Proc)
       allow(fetch).to receive(:call).with("https://parts.test/down").and_raise(Datasheet::Research::Unavailable)
       allow(fetch).to receive(:call).with(match.url).and_return(match)
@@ -71,8 +71,8 @@ RSpec.describe Datasheet::Research::PageSearch do
     it "does not accept a single product page that lacks the interchange" do
       other = page(url: "https://parts.test/other", part_number: "M200", interchange_numbers: [ "XX-1" ])
       search = search_returning(
-        '"DM-152" oil pump 1976 2014' => [ other.url ],
-        '"RM-152" oil pump 1976 2014' => []
+        '"DM-152" Nissan oil pump 1976-2014' => [ other.url ],
+        '"RM-152" Nissan oil pump 1976-2014' => []
       )
       fetch = fetch_returning(other)
 
@@ -81,8 +81,8 @@ RSpec.describe Datasheet::Research::PageSearch do
 
     it "returns not found without retrying when every search responds empty" do
       search = search_returning(
-        '"DM-152" oil pump 1976 2014' => [],
-        '"RM-152" oil pump 1976 2014' => []
+        '"DM-152" Nissan oil pump 1976-2014' => [],
+        '"RM-152" Nissan oil pump 1976-2014' => []
       )
       fetch = instance_double(Proc)
       allow(fetch).to receive(:call)
@@ -101,13 +101,53 @@ RSpec.describe Datasheet::Research::PageSearch do
       expect(search).to have_received(:call).once
     end
 
-    it "fails on the third time the search does not respond" do
+    it "retries each candidate three times when the search does not respond" do
       search = instance_double(Datasheet::Research::SerpApiSearch)
       allow(search).to receive(:call).and_raise(Datasheet::Research::Unavailable)
       fetch = instance_double(Proc)
 
       expect(search_pages(search:, fetch:)).to eq(:failed)
-      expect(search).to have_received(:call).exactly(3).times
+      expect(search).to have_received(:call).with(%("DM-152" Nissan oil pump 1976-2014)).exactly(3).times
+      expect(search).to have_received(:call).with(%("RM-152" Nissan oil pump 1976-2014)).exactly(3).times
+    end
+
+    it "keeps searching the next candidate when the first search does not respond" do
+      search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).with(%("DM-152" Nissan oil pump 1976-2014)).and_raise(Datasheet::Research::Unavailable)
+      allow(search).to receive(:call).with(%("RM-152" Nissan oil pump 1976-2014)).and_return([])
+      fetch = instance_double(Proc)
+      allow(fetch).to receive(:call)
+
+      expect(search_pages(search:, fetch:)).to eq(:not_found)
+      expect(search).to have_received(:call).with(%("DM-152" Nissan oil pump 1976-2014)).exactly(3).times
+      expect(search).to have_received(:call).with(%("RM-152" Nissan oil pump 1976-2014)).once
+      expect(fetch).not_to have_received(:call)
+    end
+
+    it "accepts a catalog suffix in the title" do
+      sheet = Datasheet::Research::Phrase.new(
+        description: "9-0511S CHRYSLER DURANGO 11/13",
+        part_number: "TK1283-1",
+        item_group: "KIT DE DISTRIBUCION"
+      ).call
+      match = page(
+        url: "https://parts.test/pump",
+        part_number: "",
+        body: "<title>Cloyes 9-0511SX Engine Timing Chain Kit</title>"
+      )
+      search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).with(sheet.queries["9-0511S"]).and_return([ match.url ])
+      fetch = fetch_returning(match)
+
+      hit = described_class.new(
+        phrase: sheet,
+        item_group: "KIT DE DISTRIBUCION",
+        search: search,
+        fetch: fetch
+      ).call
+
+      expect(hit).to have_attributes(equivalent: "9-0511S", url: match.url)
+      expect(sheet.queries["9-0511S"]).to eq(%("9-0511S" Chrysler timing chain kit 2011-2013))
     end
   end
 

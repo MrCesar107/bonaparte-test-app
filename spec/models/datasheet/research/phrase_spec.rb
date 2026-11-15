@@ -13,7 +13,7 @@ RSpec.describe Datasheet::Research::Phrase do
       expect(phrase.oversize).to be_nil
       expect(phrase.years).to eq([ "1976", "2014" ])
       expect(phrase.group_alias).to eq("oil pump")
-      expect(phrase.queries["DM-152"]).to eq(%("DM-152" oil pump 1976 2014))
+      expect(phrase.queries["DM-152"]).to eq(%("DM-152" Nissan oil pump 1976-2014))
     end
 
     it "expands short year pairs and keeps four digit years" do
@@ -24,6 +24,9 @@ RSpec.describe Datasheet::Research::Phrase do
 
     it "matches the group alias without case or accents and keeps the longest key" do
       expect(cut(description: "X", part_number: "X", item_group: "PUNTERÍA HIDRÁULICA").group_alias).to eq("hydraulic lifter")
+      expect(cut(description: "X", part_number: "X", item_group: "PUNTERIAS").group_alias).to eq("lifter")
+      expect(cut(description: "X", part_number: "X", item_group: "KIT DE DISTRIBUCION").group_alias).to eq("timing chain kit")
+      expect(cut(description: "X", part_number: "X", item_group: "JUEGO DE EMPAQUES").group_alias).to eq("full gasket set")
       expect(cut(description: "X", part_number: "X", item_group: "PISTON Y BOMBA DE ACEITE").group_alias).to eq("oil pump")
     end
 
@@ -67,10 +70,16 @@ RSpec.describe Datasheet::Research::Phrase do
       expect(described_class.same_number?("fsx-5840301", "FS5840301")).to be(true)
     end
 
+    it "accepts a letter suffix when the base matches and there are at least five digits" do
+      expect(described_class.same_number?("9-0511S", "9-0511SX")).to be(true)
+      expect(described_class.same_number?("9-0511S", "9-0511SVVT")).to be(true)
+    end
+
     it "rejects a different number, an equivalent and a short digit run" do
       expect(described_class.same_number?("SA-76260", "76260")).to be(false)
       expect(described_class.same_number?("DM-152", "M152")).to be(false)
       expect(described_class.same_number?("X152", "152")).to be(false)
+      expect(described_class.same_number?("9-0511S", "9-0511S2")).to be(false)
     end
   end
 
