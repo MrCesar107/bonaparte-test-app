@@ -35,6 +35,12 @@ class Datasheet::Research::Phrase
       suffix_letter_variant?(compact_left, compact_right)
   end
 
+  def self.mentioned?(text, candidate)
+    text.to_s.scan(/[A-Z0-9][A-Z0-9.\-\/]*\d[A-Z0-9.\-\/]*/i).any? { |token|
+      same_number?(token, candidate)
+    }
+  end
+
   def initialize(description:, part_number:, item_group:)
     @description = description.to_s
     @part_number = part_number.to_s
@@ -64,7 +70,7 @@ class Datasheet::Research::Phrase
       return false unless left_rest == right_rest
 
       digits = left_rest.gsub(/\D/, "")
-      return false if digits.length < 5
+      return false if digits.length < 6
 
       longer, shorter = [ left_prefix, right_prefix ].sort_by(&:length).reverse
       one_extra_letter?(longer, shorter)

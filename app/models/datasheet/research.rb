@@ -50,6 +50,7 @@ class Datasheet::Research
       ).call
       result = Datasheet::Research::PageSearch.new(
         phrase: phrase,
+        source_row: source_row,
         item_group: source_row.item_group,
         search: @search,
         fetch: @fetch

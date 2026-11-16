@@ -65,9 +65,13 @@ RSpec.describe Datasheet::Research::Phrase do
       expect(described_class.same_number?("9-0511S", "90511S")).to be(true)
     end
 
-    it "accepts one extra prefix letter when the digits match and there are at least five" do
+    it "accepts one extra prefix letter when the digits match and there are at least six" do
       expect(described_class.same_number?("FSX-5840301", "FS5840301")).to be(true)
       expect(described_class.same_number?("fsx-5840301", "FS5840301")).to be(true)
+    end
+
+    it "rejects one extra prefix letter on a short catalog code" do
+      expect(described_class.same_number?("R-83-301", "83-301")).to be(false)
     end
 
     it "accepts a letter suffix when the base matches and there are at least five digits" do

@@ -2,11 +2,12 @@ class Datasheet::Research::SimileRecord
   CATEGORY = "Vehículo ligero"
   VEHICLE_SYSTEM = "Motor"
 
-  def initialize(part_store:, source_row:, phrase:, result:)
+  def initialize(part_store:, source_row:, phrase:, result:, rewrite: Datasheet::Research::PageRewrite.new)
     @part_store = part_store
     @source_row = source_row
     @phrase = phrase
     @result = result
+    @rewrite = rewrite
   end
 
   def call
@@ -49,7 +50,9 @@ class Datasheet::Research::SimileRecord
   end
 
   def lists_from_page?
-    lists
+    read = lists
+    return read.applications.any? if hit? && @result.lists
+
     @page_lists&.from_page? == true
   end
 
@@ -59,11 +62,14 @@ class Datasheet::Research::SimileRecord
 
   def lists
     return empty_lists unless hit?
+    return @lists ||= @result.lists if @result.lists
 
     @page_lists ||= Datasheet::Research::PageLists.new(
       body: @result.body,
+      overview: @result.overview,
       phrase: @phrase,
-      source_row: @source_row
+      source_row: @source_row,
+      rewrite: @rewrite
     )
     @lists ||= @page_lists.call
   rescue Datasheet::Research::Unavailable

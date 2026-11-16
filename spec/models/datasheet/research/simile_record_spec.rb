@@ -32,6 +32,27 @@ RSpec.describe Datasheet::Research::SimileRecord do
       )
     end
 
+    it "uses the lists the search already read" do
+      part_store = create(:part_store)
+      source_row = source_row_for(part_store)
+      rewrite = empty_rewrite
+      ready = described_class.new(
+        part_store: part_store,
+        source_row: source_row,
+        phrase: phrase_for(source_row),
+        result: hit.with(lists: read_lists),
+        rewrite: rewrite
+      )
+
+      ready.call
+
+      sheet = part_store.datasheets.find_by!(equivalent: "DM-152")
+
+      expect(sheet).to have_attributes(url: "https://parts.test/dm-152", status: "created")
+      expect(sheet.applications.map(&:model)).to eq([ "Pickup" ])
+      expect(rewrite).not_to have_received(:call)
+    end
+
     it "does not publish a page that has no lists" do
       part_store = create(:part_store)
       source_row = source_row_for(part_store)
@@ -40,7 +61,8 @@ RSpec.describe Datasheet::Research::SimileRecord do
         part_store: part_store,
         source_row: source_row,
         phrase: phrase_for(source_row),
-        result: hit("<title>DM-152 Oil Pump</title><p>sin tablas</p>")
+        result: hit("<title>DM-152 Oil Pump</title><p>sin tablas</p>"),
+        rewrite: empty_rewrite
       ).call
 
       sheet = part_store.datasheets.find_by!(equivalent: "DM-152")
@@ -137,8 +159,38 @@ RSpec.describe Datasheet::Research::SimileRecord do
     Datasheet::Research::PageSearch::Hit.new(
       equivalent: "DM-152",
       url: "https://parts.test/dm-152",
-      body: body
+      body: body,
+      overview: ""
     )
+  end
+
+  def read_lists
+    Datasheet::Research::PageLists::Lists.new(
+      part_number: "DM-152",
+      subsystem: "Bombas",
+      product: "Bomba de aceite",
+      description: "Párrafo",
+      applications: [
+        Datasheet::Research::PageLists::ApplicationRow.new(
+          manufacturer: "Nissan", model: "Pickup", submodel: "", start_year: "1976", end_year: "2014",
+          liters: "", engine_cc: "", engine_cid: "", engine_cylinders: "", block: "", fuel_type: "", market: ""
+        )
+      ],
+      interchanges: [],
+      attributes: [],
+      unconfirmed_tokens: []
+    )
+  end
+
+  def empty_rewrite
+    rewrite = instance_double(Datasheet::Research::PageRewrite)
+    allow(rewrite).to receive(:call).and_return(
+      Datasheet::Research::PageLists::Lists.new(
+        part_number: "", subsystem: "", product: "", description: "",
+        applications: [], interchanges: [], attributes: [], unconfirmed_tokens: []
+      )
+    )
+    rewrite
   end
 
   def page_html

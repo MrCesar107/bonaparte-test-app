@@ -45,6 +45,7 @@ gem "devise"
 gem "simple_form"
 gem "tailwindcss-rails", "~> 4.6"
 gem "roo", "~> 4.0.0"
+gem "pdf-reader"
 gem "caxlsx", ">= 4.4.2"
 gem "ruby_llm"
 

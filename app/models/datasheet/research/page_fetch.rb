@@ -33,7 +33,7 @@ class Datasheet::Research::PageFetch
     response, final_uri = request(uri, REDIRECTS)
     return [ "", final_uri.to_s ] if response.nil? || !response.is_a?(Net::HTTPSuccess)
 
-    [ utf8(response.body), final_uri.to_s ]
+    [ page_body(response.body), final_uri.to_s ]
   rescue URI::InvalidURIError
     [ "", url.to_s ]
   end
@@ -47,7 +47,7 @@ class Datasheet::Research::PageFetch
     http.read_timeout = READ_TIMEOUT
     get = Net::HTTP::Get.new(uri)
     get["User-Agent"] = USER_AGENT
-    get["Accept"] = "text/html,application/xhtml+xml"
+    get["Accept"] = "text/html,application/xhtml+xml,application/pdf"
     response = http.request(get)
     return [ response, uri ] unless response.is_a?(Net::HTTPRedirection) && redirects.positive?
 
@@ -60,6 +60,8 @@ class Datasheet::Research::PageFetch
   end
 
   def page_from(url, body)
+    return pdf_page(url, body) if body.start_with?("%PDF")
+
     lists = Datasheet::Research::PageTables.new(body).call
     products = json_products(body)
     part_number = part_number_from(lists, products, body, url)
@@ -183,8 +185,26 @@ class Datasheet::Research::PageFetch
     @documents[body]
   end
 
+  def page_body(body)
+    raw = body.to_s
+    return raw.dup.force_encoding(Encoding::BINARY) if raw.start_with?("%PDF")
+
+    utf8(raw)
+  end
+
   def utf8(text)
     text.to_s.dup.force_encoding(Encoding::UTF_8).scrub
+  end
+
+  def pdf_page(url, body)
+    Datasheet::Research::PageSearch::Page.new(
+      url: url,
+      part_number: "",
+      product_count: 0,
+      group: "",
+      interchange_numbers: [],
+      body: body
+    )
   end
 
   def blank_page(url)
