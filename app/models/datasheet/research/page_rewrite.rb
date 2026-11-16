@@ -21,14 +21,20 @@ class Datasheet::Research::PageRewrite
       Rewrite only the text of this page as JSON.
       Do not choose another URL or another part sheet.
       Keep the page order.
+      Write the description in Spanish, in two sentences: what the part is and which engine it fits, including the measurements the page states.
+      Do not mention other part numbers, variants, or what the page does not confirm.
       An application is one vehicle manufacturer, one vehicle model, and one year range.
+      Copy every vehicle model the page names for this part.
       The model is only the vehicle name. It is not a sentence.
       A year range stays in start_year and end_year.
       Do not use a part number as a year.
       If the page says "since" a year and there is no end year, leave end_year as an empty string.
-      Leave submodel, liters, engine_cc, engine_cid, engine_cylinders, block, fuel_type, and market empty when the text does not state them.
+      When the page states submodel, liters, engine_cc, engine_cid, engine_cylinders, block, fuel_type, or market, copy those values onto every application of that engine.
+      Leave any of those fields empty when the text does not state them.
       An interchange is a part number and its brand.
       An attribute is a measurement with a name and a value.
+      Name attribute_class and name in Spanish.
+      Split a list of ring grooves into one attribute per groove.
       Do not copy questions, shopping text, or instructions to the reader.
       If the text does not confirm that this part number fits the vehicles, return empty applications, interchanges, and attributes.
       Say that the list is not established in the description.

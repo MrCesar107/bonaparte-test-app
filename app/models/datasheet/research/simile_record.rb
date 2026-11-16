@@ -1,6 +1,13 @@
 class Datasheet::Research::SimileRecord
   CATEGORY = "Vehículo ligero"
   VEHICLE_SYSTEM = "Motor"
+  CATALOG_LABELS = {
+    "juego de empaque" => [ "Juntas y sistemas de sellado", "Juego de empaques de motor" ],
+    "bomba de aceite" => [ "Bombas", "Bomba de aceite del motor" ],
+    "kit de distribucion" => [ "Componentes del tren de válvulas", "Kit de cadena de tiempo" ],
+    "punteria" => [ "Componentes del tren de válvulas", "Puntería hidráulica" ],
+    "piston" => [ "Componentes del bloque de cilindros", "Pistón de motor" ]
+  }.freeze
 
   def initialize(part_store:, source_row:, phrase:, result:, rewrite: Datasheet::Research::PageRewrite.new)
     @part_store = part_store
@@ -142,11 +149,25 @@ class Datasheet::Research::SimileRecord
       item_group: @source_row.item_group,
       category: CATEGORY,
       vehicle_system: VEHICLE_SYSTEM,
-      subsystem: read.subsystem,
-      product: read.product,
+      subsystem: catalog_subsystem(read),
+      product: catalog_product(read),
       description: read.description,
       unconfirmed_tokens: read.unconfirmed_tokens
     )
+  end
+
+  def catalog_subsystem(read)
+    catalog_label&.first.presence || read.subsystem
+  end
+
+  def catalog_product(read)
+    catalog_label&.last.presence || read.product
+  end
+
+  def catalog_label
+    normalized = I18n.transliterate(@source_row.item_group).downcase.squish
+    key = CATALOG_LABELS.keys.select { |candidate| normalized.include?(candidate) }.max_by(&:length)
+    CATALOG_LABELS[key]
   end
 
   def stored_part?

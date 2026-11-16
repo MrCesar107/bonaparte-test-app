@@ -44,8 +44,27 @@ class Datasheet::Research::PageSearch
   private
 
   def search_candidate(candidate)
+    result = search_query(candidate, @phrase.queries[candidate])
+    return result if page?(result) || result == :out_of_credits || result == :failed
+
+    bare = @phrase.bare_queries[candidate]
+    return result if bare == @phrase.queries[candidate]
+
+    bare_result = search_query(candidate, bare)
+    return bare_result if page?(bare_result) || bare_result == :out_of_credits || bare_result == :failed
+    return result if result.is_a?(Hit)
+    return bare_result if bare_result.is_a?(Hit)
+
+    :not_found
+  end
+
+  def page?(result)
+    result.is_a?(Hit) && result.url.present?
+  end
+
+  def search_query(candidate, query)
     ATTEMPTS.times do
-      leads = search_leads(candidate)
+      leads = search_leads(query)
       return :out_of_credits if leads == :out_of_credits
       next if leads == :retry
 
@@ -58,8 +77,8 @@ class Datasheet::Research::PageSearch
     :failed
   end
 
-  def search_leads(candidate)
-    response = @search.call(@phrase.queries[candidate])
+  def search_leads(query)
+    response = @search.call(query)
     @overview = response.respond_to?(:overview) ? response.overview.to_s : ""
     Array(response).map { |item| lead(item) }
   rescue Datasheet::Research::OutOfCredits

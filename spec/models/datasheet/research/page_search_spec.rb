@@ -2,6 +2,21 @@ require "rails_helper"
 
 RSpec.describe Datasheet::Research::PageSearch do
   describe "#call" do
+    it "searches the candidate again without the year range when the dated query has no page" do
+      melling = page(url: "https://parts.test/m152", part_number: "M152", interchange_numbers: [ "DM-152" ], body: "<title>M152 Oil Pump</title>")
+      match = page(url: "https://parts.test/dm-152", part_number: "DM-152", body: vehicle_page("DM-152"))
+      search = search_returning(
+        '"DM-152" Nissan oil pump 1976-2014' => [ melling.url ],
+        '"DM-152" Nissan oil pump' => [ match.url ]
+      )
+      fetch = fetch_returning(melling, match)
+
+      hit = search_pages(search:, fetch:)
+
+      expect(hit).to have_attributes(equivalent: "DM-152", url: match.url)
+      expect(search).to have_received(:call).with(%("DM-152" Nissan oil pump))
+    end
+
     it "accepts the part number page before an earlier interchange page" do
       interchange = page(url: "https://parts.test/m152", part_number: "M152", interchange_numbers: [ "DM-152" ])
       match = page(url: "https://parts.test/dm-152", part_number: "DM-152", body: vehicle_page("DM-152"))
@@ -88,7 +103,7 @@ RSpec.describe Datasheet::Research::PageSearch do
       allow(fetch).to receive(:call)
 
       expect(search_pages(search:, fetch:)).to eq(:not_found)
-      expect(search).to have_received(:call).twice
+      expect(search).to have_received(:call).exactly(4).times
       expect(fetch).not_to have_received(:call)
     end
 
@@ -113,6 +128,7 @@ RSpec.describe Datasheet::Research::PageSearch do
 
     it "keeps searching the next candidate when the first search does not respond" do
       search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).and_return([])
       allow(search).to receive(:call).with(%("DM-152" Nissan oil pump 1976-2014)).and_raise(Datasheet::Research::Unavailable)
       allow(search).to receive(:call).with(%("RM-152" Nissan oil pump 1976-2014)).and_return([])
       fetch = instance_double(Proc)
@@ -168,6 +184,7 @@ RSpec.describe Datasheet::Research::PageSearch do
       )
       piston = page(url: "https://parts.test/piston", part_number: "SP26-329R", body: vehicle_page("SP26-329R"))
       search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).and_return([])
       allow(search).to receive(:call).with(sheet.queries["83-301"]).and_return([ filter.url ])
       allow(search).to receive(:call).with(sheet.queries["SP26-329R"]).and_return([ piston.url ])
       fetch = fetch_returning(filter, piston)
@@ -200,6 +217,7 @@ RSpec.describe Datasheet::Research::PageSearch do
       overview = "83-301 is listed apart from the piston applications"
       reply = Datasheet::Research::SerpApiSearch::Reply.new([ filter.url ], overview)
       search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).and_return([])
       allow(search).to receive(:call).with(sheet.queries["83-301"]).and_return(reply)
       allow(search).to receive(:call).with(sheet.queries["SP26-329R"]).and_return([])
       fetch = fetch_returning(filter)
@@ -233,6 +251,7 @@ RSpec.describe Datasheet::Research::PageSearch do
       overview = "83-301 is listed apart from the piston applications"
       reply = Datasheet::Research::SerpApiSearch::Reply.new([ filter.url ], overview)
       search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).and_return([])
       allow(search).to receive(:call).with(sheet.queries["83-301"]).and_return(reply)
       allow(search).to receive(:call).with(sheet.queries["SP26-329R"]).and_return([ piston.url ])
       fetch = fetch_returning(filter, piston)
@@ -264,6 +283,7 @@ RSpec.describe Datasheet::Research::PageSearch do
       overview = "83-301 is listed apart from the piston applications"
       reply = Datasheet::Research::SerpApiSearch::Reply.new([ filter.url ], overview)
       search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).and_return([])
       allow(search).to receive(:call).with(sheet.queries["83-301"]).and_return(reply)
       allow(search).to receive(:call).with(sheet.queries["SP26-329R"]).and_return([ piston.url ])
       fetch = fetch_returning(filter, piston)
@@ -284,6 +304,7 @@ RSpec.describe Datasheet::Research::PageSearch do
       overview = "A note about DM-152 appears here without a fitment row."
       reply = Datasheet::Research::SerpApiSearch::Reply.new([], overview)
       search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).and_return([])
       allow(search).to receive(:call).with(%("DM-152" Nissan oil pump 1976-2014)).and_return(reply)
       allow(search).to receive(:call).with(%("RM-152" Nissan oil pump 1976-2014)).and_return([])
 
@@ -326,6 +347,7 @@ RSpec.describe Datasheet::Research::PageSearch do
         body: vehicle_page("Cloyes 9-0511SX Engine Timing Chain Kit")
       )
       search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).and_return([])
       allow(search).to receive(:call).with(sheet.queries["9-0511S"]).and_return([ match.url ])
       fetch = fetch_returning(match)
 
@@ -414,6 +436,7 @@ RSpec.describe Datasheet::Research::PageSearch do
 
   def search_returning(urls_by_query)
     search = instance_double(Datasheet::Research::SerpApiSearch)
+    allow(search).to receive(:call).and_return([])
     urls_by_query.each do |query, urls|
       allow(search).to receive(:call).with(query).and_return(urls)
     end

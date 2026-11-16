@@ -22,7 +22,7 @@ class Datasheet::Research::Phrase
     "empaque" => "gasket set"
   }.freeze
 
-  Result = Data.define(:candidates, :oversize, :years, :group_alias, :queries)
+  Result = Data.define(:candidates, :oversize, :years, :group_alias, :queries, :bare_queries)
 
   def self.same_number?(left, right)
     compact_left = compact_number(left)
@@ -53,7 +53,8 @@ class Datasheet::Research::Phrase
       oversize: oversize,
       years: years,
       group_alias: group_alias,
-      queries: queries
+      queries: queries,
+      bare_queries: bare_queries
     )
   end
 
@@ -183,8 +184,14 @@ class Datasheet::Research::Phrase
     candidates.index_with { |candidate| query_for(candidate) }
   end
 
-  def query_for(candidate)
-    [ %("#{candidate}"), vehicle_brand, group_alias, year_range ].compact_blank.join(" ")
+  def bare_queries
+    candidates.index_with { |candidate| query_for(candidate, years: false) }
+  end
+
+  def query_for(candidate, years: true)
+    parts = [ %("#{candidate}"), vehicle_brand, group_alias ]
+    parts << year_range if years
+    parts.compact_blank.join(" ")
   end
 
   def vehicle_brand

@@ -49,7 +49,7 @@ El corte no usa red. La primera marca de vehículo parte la frase. La lista fija
 
 En `RM-152` la frase `DM-152 NISSAN PICKUP ... 76/14` y el grupo `BOMBA DE ACEITE` dejan el candidato `DM-152` y, al final, `RM-152`.
 
-La consulta del candidato es el número entre comillas, la marca del vehículo, el alias en inglés del grupo y los años de la frase como un rango. Para esa fila: `"DM-152" Nissan oil pump 1976-2014`. Una ficha que trae el número y no repite los años se acepta igual. Los años que se guardan en `applications` son los de la ficha.
+La consulta del candidato es el número entre comillas, la marca del vehículo, el alias en inglés del grupo y los años de la frase como un rango. Para esa fila: `"DM-152" Nissan oil pump 1976-2014`. Si esa consulta no deja una página, el mismo candidato se busca otra vez sin el rango: `"DM-152" Nissan oil pump`. Una ficha que trae el número y no repite los años se acepta igual. Los años que se guardan en `applications` son los de la ficha.
 
 El alias sale de la tabla fija del alcance. La clave se compara sin mayúsculas ni acentos y gana la más larga que el grupo contenga: bomba de aceite, cadena de tiempo, kit de distribucion, punteria hidraulica, punteria, piston, juego de empaque, empaque. Un token `76/14` se abre en dos años de cuatro dígitos: `00`–`49` hacia `2000` y `50`–`99` hacia `1900`, y la consulta los escribe `1976-2014`. Un año que ya trae cuatro dígitos pasa igual.
 
@@ -92,7 +92,7 @@ Los códigos de la frase que esa página no confirmó van a `parts.unconfirmed_t
 
 En la misma escritura quedan la ficha, sus listas y la pieza.
 
-- `created`: había página con listas. `url` es esa página. La pieza guarda referencia en `part_reference`, frase, huella, marca, grupo, categoría `Vehículo ligero`, sistema `Motor`, y el subsistema, producto y descripción leídos una sola vez.
+- `created`: había página con listas. `url` es esa página. La pieza guarda referencia en `part_reference`, frase, huella, marca, grupo, categoría `Vehículo ligero` y sistema `Motor`. El subsistema y el producto salen del grupo: bomba de aceite es `Bombas` y `Bomba de aceite del motor`, pistones es `Componentes del bloque de cilindros` y `Pistón de motor`, juego de empaques es `Juntas y sistemas de sellado` y `Juego de empaques de motor`, kit de distribución y punterías son `Componentes del tren de válvulas` con `Kit de cadena de tiempo` o `Puntería hidráulica`. La descripción se lee una sola vez.
 - `not_found`: SerpApi respondió y ningún candidato dejó página con listas. Las listas quedan vacías y no se reintenta. Si una página coincidió por el número, `url` guarda esa dirección y el `equivalent` es el candidato que coincidió. Si ninguna coincidió, `url` queda en `""` y el `equivalent` es el primer candidato.
 - `failed`: SerpApi o la descarga no respondieron en los tres intentos de esa investigación. Listas vacías y `url` en `""`. [app/models/datasheet.rb](../app/models/datasheet.rb) ya exige `url`, así que el vacío es `""` y no `nil`.
 

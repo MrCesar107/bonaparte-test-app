@@ -26,7 +26,7 @@ RSpec.describe Datasheet::Research::SimileRecord do
         category: "Vehículo ligero",
         vehicle_system: "Motor",
         subsystem: "Bombas",
-        product: "Bomba de aceite",
+        product: "Bomba de aceite del motor",
         description: "Párrafo",
         unconfirmed_tokens: [ "QJC20G" ]
       )

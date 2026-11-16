@@ -14,6 +14,7 @@ RSpec.describe Datasheet::Research::Phrase do
       expect(phrase.years).to eq([ "1976", "2014" ])
       expect(phrase.group_alias).to eq("oil pump")
       expect(phrase.queries["DM-152"]).to eq(%("DM-152" Nissan oil pump 1976-2014))
+      expect(phrase.bare_queries["DM-152"]).to eq(%("DM-152" Nissan oil pump))
     end
 
     it "expands short year pairs and keeps four digit years" do
