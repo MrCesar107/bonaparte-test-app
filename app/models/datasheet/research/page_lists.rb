@@ -16,16 +16,22 @@ class Datasheet::Research::PageLists
 
   InterchangeRow = Data.define(:number, :brand, :origin)
   AttributeRow = Data.define(:attribute_class, :name, :unit, :value)
+  VEHICLE_WORD = /\A(?:[[:alnum:]][[:alnum:]\-\/]*|&)\z/
+  VEHICLE_STOP_WORD = /\A(or|major|minor|engine|engines|code|across|part|number|kit)\z/i
   UNCONFIRMED_LIST = /
     not\s+confirmed |
     unconfirmed |
     does\s+not\s+correspond |
     do\s+not\s+correspond |
+    does\s+not\s+match |
+    not\s+established |
     not\s+a\s+standard |
     are\s+examples |
+    likely\s+a\s+(?:third-party|typo|warehouse|internal) |
     no\s+corresponde |
     no\s+est[aá]n?\s+confirmad |
     no\s+confirmad |
+    no\s+est[aá]\s+establecid |
     son\s+ejemplos
   /ix
 
@@ -104,9 +110,20 @@ class Datasheet::Research::PageLists
 
     lists.with(
       applications: lists.applications.select { |row| application?(row) },
-      interchanges: lists.interchanges.select { |row| row.number.present? },
+      interchanges: lists.interchanges.select { |row| interchange?(row) },
       attributes: lists.attributes.select { |row| attribute?(row) }
     )
+  end
+
+  def interchange?(row)
+    number = row.number.to_s.squish
+    return false if number.blank?
+
+    token = number.split.first
+    @phrase.candidates.none? { |candidate|
+      Datasheet::Research::Phrase.same_number?(number, candidate) ||
+        Datasheet::Research::Phrase.same_number?(token, candidate)
+    }
   end
 
   def application?(row)
@@ -115,9 +132,11 @@ class Datasheet::Research::PageLists
 
   def vehicle?(model)
     text = model.to_s.squish
-    return false if text.blank? || text.include?(",") || text.split.size > 4
+    words = text.split
+    return false if words.empty? || words.size > 4 || text.include?(",")
+    return false unless words.all? { |word| word.match?(VEHICLE_WORD) }
 
-    !text.match?(/\b(engine|code|across|part|number|kit)\b/i)
+    words.none? { |word| word.match?(VEHICLE_STOP_WORD) }
   end
 
   def years?(row)
@@ -139,7 +158,9 @@ class Datasheet::Research::PageLists
 
   def attribute?(row)
     text = "#{row.attribute_class} #{row.name} #{row.value}"
-    row.name.present? && row.value.present? && !text.match?(/\?|let me know|if you['’]d like|go to product|product viewer/i)
+    row.name.present? && row.value.present? &&
+      !row.attribute_class.to_s.match?(/\d/) &&
+      !text.match?(/\?|let me know|if you['’]d like|go to product|product viewer|approximately|aprox/i)
   end
 
   def without_lists(lists)

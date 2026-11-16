@@ -147,6 +147,153 @@ RSpec.describe Datasheet::Research::PageLists do
       expect(reader).not_to be_from_page
     end
 
+    it "drops a transcription that says the part number does not match" do
+      body = "<p>QJC20G aparece en el texto</p>"
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call).with(body).and_return(
+        empty_lists(part_number: "QJC20G", product: "Full gasket set").with(
+          description: 'The part code "QJC20G" does not match a standard Nissan factory part number. Its compatibility is not established.',
+          applications: [
+            application_row(manufacturer: "Nissan", model: "240SX", start_year: "1989", end_year: "1997"),
+            application_row(manufacturer: "Nissan", model: "300ZX", start_year: "1990", end_year: "1996")
+          ],
+          interchanges: [ described_class::InterchangeRow.new(number: "FGS6007", brand: "DNJ", origin: "Aftermarket") ]
+        )
+      )
+      reader = described_class.new(
+        body: body,
+        phrase: phrase("QJC20G NISSAN PICKUP 89/03", "FSX-5840301", "JUEGO DE EMPAQUES"),
+        source_row: build(:source_row, description: "QJC20G NISSAN PICKUP 89/03"),
+        rewrite: rewrite
+      )
+
+      lists = reader.call
+
+      expect(lists.applications).to be_empty
+      expect(lists.interchanges).to be_empty
+      expect(lists.attributes).to be_empty
+      expect(reader).not_to be_from_page
+    end
+
+    it "keeps a piston list that only disclaims other part numbers" do
+      body = "<p>83-301 aparece en el texto</p>"
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call).with(body).and_return(
+        empty_lists(part_number: "83-301", product: "Engine piston set").with(
+          description: "Piston set for the Silverado 1500. Other GM numbers are not identified as direct replacements.",
+          applications: [
+            application_row(manufacturer: "Chevrolet", model: "Silverado 1500", start_year: "2014", end_year: "2018")
+          ],
+          attributes: [
+            described_class::AttributeRow.new(attribute_class: "Dimensions", name: "Cylinder Bore Diameter", unit: "mm", value: "99.60")
+          ]
+        )
+      )
+      reader = described_class.new(
+        body: body,
+        phrase: phrase("83-301 CHEVROLET SILVERADO 14/18", "SP26-329R", "PISTONES"),
+        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO 14/18"),
+        rewrite: rewrite
+      )
+
+      lists = reader.call
+
+      expect(lists.applications.map(&:model)).to eq([ "Silverado 1500" ])
+      expect(lists.attributes.map(&:value)).to eq([ "99.60" ])
+      expect(reader).to be_from_page
+    end
+
+    it "drops an interchange that repeats the searched number" do
+      body = "<p>83-301 aparece en el texto</p>"
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call).with(body).and_return(
+        empty_lists(part_number: "83-301", product: "Pistón").with(
+          applications: [
+            application_row(manufacturer: "Chevrolet", model: "Silverado 1500", start_year: "2014", end_year: "2018")
+          ],
+          interchanges: [
+            described_class::InterchangeRow.new(number: "83-301", brand: "SPQ", origin: "Aftermarket"),
+            described_class::InterchangeRow.new(number: "83-301 00", brand: "SPQ", origin: "Aftermarket"),
+            described_class::InterchangeRow.new(number: "FGS6007", brand: "DNJ", origin: "Aftermarket")
+          ]
+        )
+      )
+      reader = described_class.new(
+        body: body,
+        phrase: phrase("83-301 CHEVROLET SILVERADO 14/18", "SP26-329R", "PISTONES"),
+        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO 14/18"),
+        rewrite: rewrite
+      )
+
+      expect(reader.call.interchanges.map(&:number)).to eq([ "FGS6007" ])
+    end
+
+    it "drops a model that is a sentence fragment" do
+      body = "<p>FS-001225 aparece en el texto</p>"
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call).with(body).and_return(
+        empty_lists(part_number: "FS-001225", product: "Empaque").with(
+          applications: [
+            application_row(manufacturer: "Nissan", model: "Or Major", start_year: "1989", end_year: "2003"),
+            application_row(manufacturer: "GM", model: ") V8 Engines", start_year: "2007", end_year: "2019")
+          ]
+        )
+      )
+      reader = described_class.new(
+        body: body,
+        phrase: phrase("FS-001225 NISSAN PICKUP 89/03", "FSX-5840301", "JUEGO DE EMPAQUES"),
+        source_row: build(:source_row, description: "FS-001225 NISSAN PICKUP 89/03"),
+        rewrite: rewrite
+      )
+
+      expect(reader.call.applications).to be_empty
+      expect(reader).not_to be_from_page
+    end
+
+    it "keeps a vehicle name with a number or an ampersand" do
+      body = "<p>9-0511S aparece en el texto</p>"
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call).with(body).and_return(
+        empty_lists(part_number: "9-0511S", product: "Kit").with(
+          applications: [
+            application_row(manufacturer: "Nissan", model: "240SX", start_year: "1989", end_year: "1998"),
+            application_row(manufacturer: "Chrysler", model: "Town & Country", start_year: "2011", end_year: "2013"),
+            application_row(manufacturer: "Chevrolet", model: "Silverado 1500", start_year: "2014", end_year: "2018")
+          ]
+        )
+      )
+      reader = described_class.new(
+        body: body,
+        phrase: phrase("9-0511S CHRYSLER DURANGO 11/13", "TK1283-1", "KIT DE DISTRIBUCION"),
+        source_row: build(:source_row, description: "9-0511S CHRYSLER DURANGO 11/13"),
+        rewrite: rewrite
+      )
+
+      expect(reader.call.applications.map(&:model)).to eq([ "240SX", "Town & Country", "Silverado 1500" ])
+    end
+
+    it "drops an approximate measurement and a part number used as its class" do
+      body = "<p>83-301 aparece en el texto</p>"
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call).with(body).and_return(
+        silverado_lists.with(
+          attributes: [
+            described_class::AttributeRow.new(attribute_class: "83-301 00", name: "External piston diameter", unit: "mm", value: "Approximately 99.6"),
+            described_class::AttributeRow.new(attribute_class: "Medida", name: "Ranura", unit: "mm", value: "1.2")
+          ]
+        )
+      )
+      reader = described_class.new(
+        body: body,
+        phrase: phrase("83-301 CHEVROLET SILVERADO 14/18", "SP26-329R", "PISTONES"),
+        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO 14/18"),
+        rewrite: rewrite
+      )
+
+      expect(reader.call.attributes.map(&:name)).to eq([ "Ranura" ])
+      expect(reader).to be_from_page
+    end
+
     it "does not publish interchanges when there is no vehicle application" do
       body = "<p>83-301 aparece en el texto</p>"
       rewrite = double("rewrite")

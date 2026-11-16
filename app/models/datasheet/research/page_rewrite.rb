@@ -30,6 +30,8 @@ class Datasheet::Research::PageRewrite
       An interchange is a part number and its brand.
       An attribute is a measurement with a name and a value.
       Do not copy questions, shopping text, or instructions to the reader.
+      If the text does not confirm that this part number fits the vehicles, return empty applications, interchanges, and attributes.
+      Say that the list is not established in the description.
 
       #{utf8(body)}
     TEXT

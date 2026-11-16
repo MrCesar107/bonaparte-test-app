@@ -215,7 +215,38 @@ RSpec.describe Datasheet::Research::PageSearch do
       ).call
 
       expect(hit).to have_attributes(equivalent: "83-301", url: "", lists: have_attributes(part_number: "83-301"))
-      expect(search).not_to have_received(:call).with(sheet.queries["SP26-329R"])
+      expect(search).to have_received(:call).with(sheet.queries["SP26-329R"])
+    end
+
+    it "prefers a later page over an earlier overview" do
+      sheet = Datasheet::Research::Phrase.new(
+        description: "83-301 CHEVROLET SILVERADO 14/18",
+        part_number: "SP26-329R",
+        item_group: "PISTONES"
+      ).call
+      filter = page(
+        url: "https://mowpart.test/83-301",
+        part_number: "",
+        body: "<title>Oregon 83-301 Oil Filter</title><p>83-301 oil filter</p>"
+      )
+      piston = page(url: "https://parts.test/piston", part_number: "SP26-329R", body: vehicle_page("SP26-329R"))
+      overview = "83-301 is listed apart from the piston applications"
+      reply = Datasheet::Research::SerpApiSearch::Reply.new([ filter.url ], overview)
+      search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).with(sheet.queries["83-301"]).and_return(reply)
+      allow(search).to receive(:call).with(sheet.queries["SP26-329R"]).and_return([ piston.url ])
+      fetch = fetch_returning(filter, piston)
+
+      hit = described_class.new(
+        phrase: sheet,
+        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO 14/18", part_number: "SP26-329R"),
+        item_group: "PISTONES",
+        search: search,
+        fetch: fetch,
+        rewrite: rewrite_returning(overview => transcribed_lists(part_number: "83-301"))
+      ).call
+
+      expect(hit).to have_attributes(equivalent: "SP26-329R", url: piston.url)
     end
 
     it "keeps searching when the overview transcription names another part" do

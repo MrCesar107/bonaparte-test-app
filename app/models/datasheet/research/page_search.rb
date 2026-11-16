@@ -20,13 +20,23 @@ class Datasheet::Research::PageSearch
 
   def call
     answered = false
+    pending_overview = nil
 
     @phrase.candidates.each do |candidate|
       result = search_candidate(candidate)
-      return result if result == :out_of_credits || result.is_a?(Hit)
+      return result if result == :out_of_credits
+      if result.is_a?(Hit)
+        return result if result.url.present?
+
+        pending_overview ||= result
+        answered = true
+        next
+      end
 
       answered = true if result == :not_found
     end
+
+    return pending_overview if pending_overview
 
     answered ? :not_found : :failed
   end
