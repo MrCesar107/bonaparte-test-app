@@ -182,7 +182,7 @@ RSpec.describe Datasheet::Research::PageSearch do
         part_number: "",
         body: "<title>Oregon 83-301 Oil Filter</title><h2>Intercambios</h2><table><tr><th>Número</th><th>Marca</th></tr><tr><td>15400-PFB-004</td><td>Honda</td></tr></table>"
       )
-      piston = page(url: "https://parts.test/piston", part_number: "SP26-329R", body: vehicle_page("SP26-329R"))
+      piston = page(url: "https://parts.test/piston", part_number: "SP26-329R", body: vehicle_page("SP26-329R", years: "2014-2018"))
       search = instance_double(Datasheet::Research::SerpApiSearch)
       allow(search).to receive(:call).and_return([])
       allow(search).to receive(:call).with(sheet.queries["83-301"]).and_return([ filter.url ])
@@ -247,7 +247,7 @@ RSpec.describe Datasheet::Research::PageSearch do
         part_number: "",
         body: "<title>Oregon 83-301 Oil Filter</title><p>83-301 oil filter</p>"
       )
-      piston = page(url: "https://parts.test/piston", part_number: "SP26-329R", body: vehicle_page("SP26-329R"))
+      piston = page(url: "https://parts.test/piston", part_number: "SP26-329R", body: vehicle_page("SP26-329R", years: "2014-2018"))
       overview = "83-301 is listed apart from the piston applications"
       reply = Datasheet::Research::SerpApiSearch::Reply.new([ filter.url ], overview)
       search = instance_double(Datasheet::Research::SerpApiSearch)
@@ -279,7 +279,7 @@ RSpec.describe Datasheet::Research::PageSearch do
         part_number: "",
         body: "<title>Oregon 83-301 Oil Filter</title><p>83-301 oil filter</p>"
       )
-      piston = page(url: "https://parts.test/piston", part_number: "SP26-329R", body: vehicle_page("SP26-329R"))
+      piston = page(url: "https://parts.test/piston", part_number: "SP26-329R", body: vehicle_page("SP26-329R", years: "2014-2018"))
       overview = "83-301 is listed apart from the piston applications"
       reply = Datasheet::Research::SerpApiSearch::Reply.new([ filter.url ], overview)
       search = instance_double(Datasheet::Research::SerpApiSearch)
@@ -344,7 +344,7 @@ RSpec.describe Datasheet::Research::PageSearch do
       match = page(
         url: "https://parts.test/pump",
         part_number: "",
-        body: vehicle_page("Cloyes 9-0511SX Engine Timing Chain Kit")
+        body: vehicle_page("Cloyes 9-0511SX Engine Timing Chain Kit", years: "2011-2013")
       )
       search = instance_double(Datasheet::Research::SerpApiSearch)
       allow(search).to receive(:call).and_return([])
@@ -415,13 +415,13 @@ RSpec.describe Datasheet::Research::PageSearch do
     )
   end
 
-  def vehicle_page(title)
+  def vehicle_page(title, years: "1976-2014")
     <<~HTML
       <title>#{title}</title>
       <h2>Aplicaciones</h2>
       <table>
         <tr><th>Fabricante</th><th>Modelo</th><th>Año</th></tr>
-        <tr><td>Nissan</td><td>Pickup</td><td>1976-2014</td></tr>
+        <tr><td>Nissan</td><td>Pickup</td><td>#{years}</td></tr>
       </table>
     HTML
   end

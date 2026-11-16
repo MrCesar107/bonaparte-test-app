@@ -1,12 +1,12 @@
 class Datasheet::Research::SimileRecord
   CATEGORY = "Vehículo ligero"
-  VEHICLE_SYSTEM = "Motor"
+  VEHICLE_SYSTEM = "MOTOR"
   CATALOG_LABELS = {
-    "juego de empaque" => [ "Juntas y sistemas de sellado", "Juego de empaques de motor" ],
-    "bomba de aceite" => [ "Bombas", "Bomba de aceite del motor" ],
-    "kit de distribucion" => [ "Componentes del tren de válvulas", "Kit de cadena de tiempo" ],
-    "punteria" => [ "Componentes del tren de válvulas", "Puntería hidráulica" ],
-    "piston" => [ "Componentes del bloque de cilindros", "Pistón de motor" ]
+    "juego de empaque" => [ "JUNTAS Y SISTEMAS DE SELLADO", "JUEGO DE EMPAQUES DE MOTOR" ],
+    "bomba de aceite" => [ "BOMBAS", "BOMBA DE ACEITE DEL MOTOR" ],
+    "kit de distribucion" => [ "COMPONENTES DEL TREN DE VÁLVULAS", "KIT DE CADENA DE TIEMPO" ],
+    "punteria" => [ "COMPONENTES DEL TREN DE VÁLVULAS", "PUNTERÍA HIDRÁULICA" ],
+    "piston" => [ "COMPONENTES DEL BLOQUE DE CILINDROS", "PISTÓN DE MOTOR" ]
   }.freeze
 
   def initialize(part_store:, source_row:, phrase:, result:, rewrite: Datasheet::Research::PageRewrite.new)

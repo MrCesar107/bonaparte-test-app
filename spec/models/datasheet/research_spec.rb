@@ -61,7 +61,7 @@ RSpec.describe Datasheet::Research do
     view = Datasheet::CatalogView.new(datasheet: datasheet).call
 
     expect(part.datasheet).to have_attributes(equivalent: "DM-152", url: page.url, status: "created")
-    expect(part).to have_attributes(product: "Bomba de aceite", category: "Vehículo ligero", vehicle_system: "Motor")
+    expect(part).to have_attributes(product: "Bomba de aceite", category: "Vehículo ligero", vehicle_system: "MOTOR")
     expect(view.metrics).to have_attributes(references: 1, applications: 3, interchanges: 1, attributes: 1, without_sheet: 1)
     expect(datasheet.part_store.datasheets.find_by(equivalent: "X-200")).to be_not_found
   end
@@ -171,8 +171,8 @@ RSpec.describe Datasheet::Research do
     <<~HTML
       <h2>Aplicaciones</h2>
       <table>
-        <tr><th>Modelo</th><th>Vigencia</th></tr>
-        <tr><td>D21</td><td>1986-1988</td></tr>
+        <tr><th>Fabricante</th><th>Modelo</th><th>Vigencia</th></tr>
+        <tr><td>Nissan</td><td>D21</td><td>1986-1988</td></tr>
       </table>
       <h2>Intercambios</h2>
       <table>

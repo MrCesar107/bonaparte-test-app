@@ -79,8 +79,7 @@ class Datasheet::Research::PageTables
   def schema_lists(lists)
     lists = lists.with(
       part_number: lists.part_number.presence || product_node["sku"].presence || product_node["mpn"].to_s,
-      product: lists.product.presence || product_node["name"].to_s.squish,
-      description: lists.description.presence || commercial_text(product_node["description"])
+      product: lists.product.presence || product_node["name"].to_s.squish
     )
     return lists if lists.applications.any? || lists.interchanges.any? || lists.attributes.any?
 
@@ -118,10 +117,6 @@ class Datasheet::Research::PageTables
       manufacturer: manufacturer, model: model, submodel: "", start_year: start_year, end_year: end_year,
       liters: "", engine_cc: "", engine_cid: "", engine_cylinders: "", block: "", fuel_type: "", market: ""
     )
-  end
-
-  def commercial_text(text)
-    text.to_s.split(/aplicaci[oó]n y compatibilidad\s*:/i).first.to_s.squish
   end
 
   def compatibility_rows(description)

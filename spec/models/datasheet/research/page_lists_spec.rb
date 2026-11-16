@@ -7,15 +7,39 @@ RSpec.describe Datasheet::Research::PageLists do
       allow(rewrite).to receive(:call)
 
       lists = described_class.new(
-        body: "<h2>Aplicaciones</h2><table><tr><th>Modelo</th></tr><tr><td>D21</td></tr></table>",
-        phrase: phrase("DM-152 QJC20G NISSAN PICKUP 76/14"),
-        source_row: build(:source_row, description: "DM-152 QJC20G NISSAN PICKUP 76/14"),
+        body: "<h2>Aplicaciones</h2><table><tr><th>Fabricante</th><th>Modelo</th><th>Vigencia</th></tr><tr><td>Nissan</td><td>D21</td><td>1986-1988</td></tr></table>",
+        phrase: phrase("DM-152 QJC20G NISSAN PICKUP 76/14", "DM-152"),
+        source_row: build(:source_row, description: "DM-152 QJC20G NISSAN PICKUP 76/14", part_number: "DM-152"),
         rewrite: rewrite
       ).call
 
       expect(lists.applications.map(&:model)).to eq([ "D21" ])
-      expect(lists.unconfirmed_tokens).to eq([ "QJC20G" ])
+      expect(lists.interchanges.map(&:number)).to eq([ "QJC20G" ])
+      expect(lists.unconfirmed_tokens).to eq([])
       expect(rewrite).not_to have_received(:call)
+    end
+
+    it "asks the model when the table rows are not vehicles" do
+      body = <<~HTML
+        <p>HL7011 aparece en el texto</p>
+        <h2>Aplicaciones</h2>
+        <table>
+          <tr><th>Fabricante</th><th>Modelo</th><th>Vigencia</th></tr>
+          <tr><td>GM</td><td>Plastic Lifter</td><td>2019</td></tr>
+          <tr><td>GM</td><td>Plastic Lifter</td><td>2019</td></tr>
+        </table>
+      HTML
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call).with(body).and_return(model_lists)
+      reader = described_class.new(
+        body: body,
+        phrase: phrase("HL7011 CHEVROLET 99/23", "HL-7025S", "PUNTERIAS"),
+        source_row: build(:source_row, description: "HL7011 CHEVROLET 99/23", part_number: "HL-7025S"),
+        rewrite: rewrite
+      )
+
+      expect(reader.call.applications.map(&:model)).to eq([ "LS" ])
+      expect(rewrite).to have_received(:call).with(body)
     end
 
     it "keeps empty lists when the page has no tables" do
@@ -76,7 +100,7 @@ RSpec.describe Datasheet::Research::PageLists do
       reader = described_class.new(
         body: body,
         phrase: phrase("83-301 CHEVROLET SILVERADO 14/18", "SP26-329R", "PISTONES"),
-        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO 14/18"),
+        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO 14/18", part_number: "SP26-329R"),
         rewrite: rewrite
       )
 
@@ -221,7 +245,7 @@ RSpec.describe Datasheet::Research::PageLists do
       reader = described_class.new(
         body: body,
         phrase: phrase("83-301 CHEVROLET SILVERADO 14/18", "SP26-329R", "PISTONES"),
-        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO 14/18"),
+        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO 14/18", part_number: "SP26-329R"),
         rewrite: rewrite
       )
 
@@ -269,7 +293,7 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.applications.map(&:model)).to eq([ "240SX", "Town & Country", "Silverado 1500" ])
+      expect(reader.call.applications.map(&:model)).to eq([ "Town & Country" ])
     end
 
     it "drops an approximate measurement and a part number used as its class" do
@@ -333,6 +357,34 @@ RSpec.describe Datasheet::Research::PageLists do
         end_year: "2003"
       )
       expect(reader).to be_from_page
+    end
+
+    it "fills a blank engine from the phrase and keeps a measurement the page already gave" do
+      body = "<p>83-301 aparece en el texto</p>"
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call).with(body).and_return(
+        empty_lists(part_number: "83-301", product: "Pistón").with(
+          applications: [
+            application_row(manufacturer: "Chevrolet", model: "Silverado 1500", start_year: "2014", end_year: "2018"),
+            application_row(manufacturer: "Chevrolet", model: "Silverado 1500", start_year: "2014", end_year: "2018"),
+            application_row(manufacturer: "Chevrolet", model: "Silverado 1500", start_year: "2014", end_year: "2018").with(liters: "5.3")
+          ]
+        )
+      )
+      reader = described_class.new(
+        body: body,
+        phrase: phrase("83-301 CHEVROLET SILVERADO V6 262 4.3 12 VAL 14/18", "SP26-329R/L+20", "PISTONES"),
+        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO V6 262 4.3 12 VAL 14/18", part_number: "SP26-329R/L+20"),
+        rewrite: rewrite
+      )
+
+      lists = reader.call
+
+      expect(lists.applications.map { |row| [ row.liters, row.engine_cid, row.engine_cylinders, row.block ] }).to eq([
+        [ "4.3", "262", "6", "V" ],
+        [ "5.3", "262", "6", "V" ]
+      ])
+      expect(lists.attributes.map { |row| [ row.name, row.value ] }).to eq([ [ "Número de válvulas", "12" ], [ "Sobremedida", "+20" ] ])
     end
 
     it "adds the oversize only when the page does not already list it" do
@@ -446,6 +498,6 @@ RSpec.describe Datasheet::Research::PageLists do
   end
 
   def application_table
-    "<h2>Aplicaciones</h2><table><tr><th>Modelo</th></tr><tr><td>Silverado</td></tr></table>"
+    "<h2>Aplicaciones</h2><table><tr><th>Fabricante</th><th>Modelo</th><th>Vigencia</th></tr><tr><td>Chevrolet</td><td>Silverado</td><td>2014-2018</td></tr></table>"
   end
 end

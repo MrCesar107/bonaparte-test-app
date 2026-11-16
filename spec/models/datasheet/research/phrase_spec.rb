@@ -54,6 +54,21 @@ RSpec.describe Datasheet::Research::Phrase do
       expect(phrase.candidates).to eq([ "REXITE", "RM-152" ])
     end
 
+    it "reads one engine and leaves repeated displacements blank" do
+      piston = cut(
+        description: "83-301 CHEVROLET SILVERADO V6 262 4.3 INC ECOTEC 12 VAL 14/18",
+        part_number: "SP26-329R/L+20",
+        item_group: "PISTONES"
+      )
+      pump = cut(
+        description: "DM-152 NISSAN PICKUP L4 L6 1.8 2.4 2.0 KA24DE L20B DOHC SOHC 8V 12V 76/14",
+        part_number: "RM-152"
+      )
+
+      expect(piston.engine).to have_attributes(liters: "4.3", cid: "262", cylinders: "6", block: "V", valves: "12")
+      expect(pump.engine).to have_attributes(liters: nil, cid: nil, cylinders: nil, block: "L", valves: nil)
+    end
+
     it "cuts on Chrysler" do
       phrase = cut(description: "DM-152 CHRYSLER 300 2014", part_number: "RM-1")
 

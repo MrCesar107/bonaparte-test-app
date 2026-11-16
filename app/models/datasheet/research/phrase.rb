@@ -22,7 +22,8 @@ class Datasheet::Research::Phrase
     "empaque" => "gasket set"
   }.freeze
 
-  Result = Data.define(:candidates, :oversize, :years, :group_alias, :queries, :bare_queries)
+  Engine = Data.define(:liters, :cid, :cylinders, :block, :valves)
+  Result = Data.define(:candidates, :oversize, :years, :group_alias, :queries, :bare_queries, :engine)
 
   def self.same_number?(left, right)
     compact_left = compact_number(left)
@@ -54,7 +55,8 @@ class Datasheet::Research::Phrase
       years: years,
       group_alias: group_alias,
       queries: queries,
-      bare_queries: bare_queries
+      bare_queries: bare_queries,
+      engine: engine
     )
   end
 
@@ -198,6 +200,64 @@ class Datasheet::Research::Phrase
     return if brand_index.nil?
 
     BRAND_LABELS[tokens[brand_index].downcase]
+  end
+
+  def engine
+    Engine.new(
+      liters: sole(liter_values),
+      cid: sole(cid_values),
+      cylinders: sole(cylinder_values),
+      block: sole(block_values),
+      valves: sole(valve_values)
+    )
+  end
+
+  def sole(values)
+    unique = values.uniq
+    unique.first if unique.one?
+  end
+
+  def liter_values
+    tokens.filter_map { |token|
+      match = token.match(/\A(\d+\.\d+)L?\z/i)
+      next if match.nil?
+
+      match[1] if match[1].to_f.between?(0.5, 12.0)
+    }
+  end
+
+  def cid_values
+    tokens.filter_map { |token|
+      token if token.match?(/\A\d{3}\z/) && token.to_i.between?(80, 700)
+    }
+  end
+
+  def cylinder_values
+    engine_layouts.map(&:last)
+  end
+
+  def block_values
+    engine_layouts.filter_map(&:first)
+  end
+
+  def engine_layouts
+    tokens.each_with_index.filter_map { |token, index|
+      if (match = token.match(/\A([VL])(\d{1,2})\z/i))
+        [ match[1].upcase, match[2] ]
+      elsif token.match?(/\A\d{1,2}\z/) && tokens[index + 1].to_s.match?(/\ACIL\z/i)
+        [ nil, token ]
+      end
+    }
+  end
+
+  def valve_values
+    tokens.each_with_index.filter_map { |token, index|
+      if (match = token.match(/\A(\d{1,2})V\z/i))
+        match[1]
+      elsif token.match?(/\A\d{1,2}\z/) && tokens[index + 1].to_s.match?(/\AVAL\z/i)
+        token
+      end
+    }
   end
 
   def year_range

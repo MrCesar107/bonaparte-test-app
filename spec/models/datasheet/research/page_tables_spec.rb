@@ -57,7 +57,7 @@ RSpec.describe Datasheet::Research::PageTables do
 
       expect(lists.part_number).to eq("FS5840301")
       expect(lists.product).to eq("Empaquetadura De Motor para Nissan D22.")
-      expect(lists.description).to eq("Empaquetadura diseñada para sellar las superficies del motor.")
+      expect(lists.description).to eq("")
       expect(lists.applications.map(&:model)).to eq([ "D-21" ])
       expect(lists.applications.first).to have_attributes(
         manufacturer: "Nissan",

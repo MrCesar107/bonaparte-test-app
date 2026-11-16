@@ -18,17 +18,17 @@ RSpec.describe Datasheet::Research::SimileRecord do
 
       expect(sheet).to have_attributes(url: "https://parts.test/dm-152", status: "created")
       expect(sheet.applications.map { |row| [ row.start_year, row.end_year ] }).to eq([ [ "1986", "1988" ] ])
-      expect(sheet.interchanges.map(&:number)).to eq([ "M152" ])
+      expect(sheet.interchanges.map(&:number)).to eq([ "M152", "QJC20G" ])
       expect(sheet.part_attributes.map(&:value)).to eq([ "10" ])
       expect(part).to have_attributes(
         phrase: source_row.description,
         brand: "Rexite",
         category: "Vehículo ligero",
-        vehicle_system: "Motor",
-        subsystem: "Bombas",
-        product: "Bomba de aceite del motor",
+        vehicle_system: "MOTOR",
+        subsystem: "BOMBAS",
+        product: "BOMBA DE ACEITE DEL MOTOR",
         description: "Párrafo",
-        unconfirmed_tokens: [ "QJC20G" ]
+        unconfirmed_tokens: []
       )
     end
 
@@ -197,8 +197,8 @@ RSpec.describe Datasheet::Research::SimileRecord do
     <<~HTML
       <h2>Aplicaciones</h2>
       <table>
-        <tr><th>Modelo</th><th>Vigencia</th></tr>
-        <tr><td>D21</td><td>1986-1988</td></tr>
+        <tr><th>Fabricante</th><th>Modelo</th><th>Vigencia</th></tr>
+        <tr><td>Nissan</td><td>D21</td><td>1986-1988</td></tr>
       </table>
       <h2>Intercambios</h2>
       <table>
