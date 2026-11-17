@@ -1,17 +1,20 @@
 <% tooltip_id = "hint-#{SecureRandom.hex(4)}" %>
+<% icon = local_assigns.fetch(:icon, :question_circle) %>
+<% button_class = local_assigns[:button_class].presence || "text-slate-500 hover:text-slate-700" %>
+<% tooltip_position = local_assigns[:placement] == :left ? "right-full mr-2" : "left-full ml-2" %>
 <span class="relative inline-flex" data-controller="hint">
   <button type="button"
-          class="inline-flex cursor-help items-center border-0 bg-transparent p-0 text-sm leading-none text-slate-500 hover:text-slate-700"
+          class="inline-flex cursor-help items-center border-0 bg-transparent p-0 text-sm leading-none <%= button_class %>"
           data-action="mouseenter->hint#show mouseleave->hint#hide focus->hint#show blur->hint#hide"
           aria-label="<%= local_assigns[:label].presence || "More information" %>"
           aria-describedby="<%= tooltip_id %>">
-    <%= fa_icon(:question_circle) %>
+    <%= fa_icon(icon) %>
   </button>
   <span id="<%= tooltip_id %>"
         role="tooltip"
         data-hint-target="tooltip"
         aria-hidden="true"
-        class="absolute left-full top-1/2 z-20 ml-2 hidden w-max max-w-xs -translate-y-1/2 rounded-md bg-slate-800 px-2.5 py-1.5 text-left text-xs font-normal leading-snug text-white shadow-lg">
+        class="absolute <%= tooltip_position %> top-1/2 z-20 hidden w-max max-w-xs -translate-y-1/2 rounded-md bg-slate-800 px-2.5 py-1.5 text-left text-xs font-normal leading-snug text-white shadow-lg">
     <%= text %>
   </span>
 </span>

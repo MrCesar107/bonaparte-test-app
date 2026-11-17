@@ -116,7 +116,10 @@ RSpec.describe "Datasheets", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("failed-sheet")
-      expect(response.body).to include("No se pudo procesar")
+      expect(response.body).to include("fa-circle-exclamation")
+      expect(response.body).to include("Ocurrió un error al generar el datasheet.")
+      expect(response.body).to include('role="tooltip"')
+      expect(response.body).not_to include("No se pudo procesar")
       expect(response.body).not_to include("fa-chevron-right")
       expect(response.body).not_to include("datasheet-status")
       expect(response.body).not_to include("Origen")

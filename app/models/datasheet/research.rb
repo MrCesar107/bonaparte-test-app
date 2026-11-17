@@ -19,8 +19,10 @@ class Datasheet::Research
     return @datasheet.failed! if rows.empty?
 
     @datasheet.source_rows.insert_all(rows)
-    research_source_rows
-    @datasheet.created!
+    research_source_rows ? @datasheet.failed! : @datasheet.created!
+  rescue StandardError
+    @datasheet.failed!
+    raise
   end
 
   private
@@ -36,6 +38,8 @@ class Datasheet::Research
   end
 
   def research_source_rows
+    failed = false
+
     @datasheet.source_rows.reset.each do |source_row|
       stored = Datasheet::Research::StoredRow.new(
         part_store: @datasheet.part_store,
@@ -55,6 +59,7 @@ class Datasheet::Research
         search: @search,
         fetch: @fetch
       ).call
+      failed = true if result == :failed || result == :out_of_credits
       break if result == :out_of_credits
 
       Datasheet::Research::SimileRecord.new(
@@ -64,6 +69,8 @@ class Datasheet::Research
         result: result
       ).call
     end
+
+    failed
   end
 
   def build_source_info(row)

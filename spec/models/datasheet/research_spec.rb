@@ -84,7 +84,7 @@ RSpec.describe Datasheet::Research do
       described_class.new(datasheet, file, search: search, fetch: fetch).call
     end
 
-    expect(datasheet.reload).to be_created
+    expect(datasheet.reload).to be_failed
     expect(Part.find_by(part_reference: "DM-152").datasheet).to be_created
     expect(datasheet.part_store.datasheets.find_by(equivalent: "X-200")).to be_nil
   end
@@ -116,7 +116,7 @@ RSpec.describe Datasheet::Research do
     expect(datasheet.source_rows).to be_empty
   end
 
-  it "leaves the datasheet pending when the workbook has no Origen sheet" do
+  it "marks the datasheet failed when the workbook has no Origen sheet" do
     datasheet = create(:datasheet)
 
     expect {
@@ -125,7 +125,20 @@ RSpec.describe Datasheet::Research do
       end
     }.to raise_error(RangeError, "sheet 'Origen' not found")
 
-    expect(datasheet.reload).to be_pending
+    expect(datasheet.reload).to be_failed
+  end
+
+  it "marks the datasheet failed when the search does not respond" do
+    datasheet = create(:datasheet)
+    search = instance_double(Datasheet::Research::SerpApiSearch)
+    allow(search).to receive(:call).and_raise(Datasheet::Research::Unavailable)
+
+    File.open(file_fixture("origin.xlsx"), "rb") do |file|
+      described_class.new(datasheet, file, search: search, fetch: unused_fetch).call
+    end
+
+    expect(datasheet.reload).to be_failed
+    expect(datasheet.part_store.datasheets.find_by(equivalent: "DM-152")).to be_failed
   end
 
   def numeric_workbook

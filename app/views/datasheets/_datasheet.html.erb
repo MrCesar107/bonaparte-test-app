@@ -91,9 +91,16 @@
       <div class="flex min-w-0 flex-col">
         <%= datasheet.name %>
       </div>
-      <span class="shrink-0 text-sm text-red-600">
-        <%= datasheet.failed? ? "No se pudo procesar" : "Sin resultados" %>
-      </span>
+      <% if datasheet.failed? %>
+        <%= render "shared/hint",
+              text: "Ocurrió un error al generar el datasheet.",
+              label: "Error al generar el datasheet",
+              icon: :circle_exclamation,
+              button_class: "text-lg text-red-600 hover:text-red-700",
+              placement: :left %>
+      <% else %>
+        <span class="shrink-0 text-sm text-red-600">Sin resultados</span>
+      <% end %>
     </div>
   <% end %>
 <% end %>

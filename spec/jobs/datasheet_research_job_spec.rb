@@ -20,7 +20,8 @@ RSpec.describe DatasheetResearchJob, type: :job do
       described_class.perform_now(datasheet)
     }.to raise_error(RuntimeError, "unreadable")
 
-    expect(datasheet.reload.file).to be_attached
+    expect(datasheet.reload).to be_failed
+    expect(datasheet.file).to be_attached
   end
 
   def datasheet_with_file
