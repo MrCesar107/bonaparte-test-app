@@ -1,19 +1,28 @@
 require "json"
 require "net/http"
+require "openssl"
 
 class Datasheet::Research::OutOfCredits < StandardError; end
 
 class Datasheet::Research::SerpApiSearch
   ENDPOINT = URI("https://serpapi.com/search.json")
+  OPEN_TIMEOUT = 5
+  READ_TIMEOUT = 15
   Result = Data.define(:url, :snippet)
 
   class Reply < Array
-    attr_reader :overview
+    attr_reader :overview, :references, :page_token
 
-    def initialize(links, overview = "")
+    def initialize(links, overview = "", references: [], page_token: nil)
       super()
       replace(Array(links))
       @overview = overview.to_s
+      @references = Array(references)
+      @page_token = page_token.presence
+    end
+
+    def pending_overview?
+      overview.blank? && page_token.present?
     end
   end
 
@@ -24,12 +33,32 @@ class Datasheet::Research::SerpApiSearch
 
   def call(query)
     payload = fetch_payload(engine: "google", q: query)
-    listed = organic_results(payload)
-    node = overview_node(payload, organic: listed)
-    Reply.new((listed + links_from(node && node["references"])).uniq(&:url), overview_text(node))
+    reply_for(organic_results(payload), payload["ai_overview"])
+  end
+
+  def resolve_overview(reply)
+    return reply unless reply.respond_to?(:pending_overview?) && reply.pending_overview?
+
+    fetched = fetch_payload(engine: "google_ai_overview", page_token: reply.page_token)
+    node = fetched["ai_overview"].is_a?(Hash) ? fetched["ai_overview"] : fetched
+    return reply unless node.is_a?(Hash)
+
+    Reply.new([], overview_text(node), references: links_from(node["references"]), page_token: reply.page_token)
   end
 
   private
+
+  def reply_for(listed, node)
+    return Reply.new(listed) unless node.is_a?(Hash)
+
+    text = overview_text(node)
+    Reply.new(
+      listed,
+      text,
+      references: text.present? ? links_from(node["references"]) : [],
+      page_token: text.present? ? nil : node["page_token"]
+    )
+  end
 
   def fetch_payload(params)
     raise Datasheet::Research::OutOfCredits if @account.searches_left.zero?
@@ -37,15 +66,27 @@ class Datasheet::Research::SerpApiSearch
 
     uri = ENDPOINT.dup
     uri.query = URI.encode_www_form(params.merge(api_key: @api_key))
-    response = Net::HTTP.get_response(uri)
+    response = get(uri)
+    @account.consume!
     payload = JSON.parse(response.body)
 
-    raise Datasheet::Research::OutOfCredits if out_of_credits?(response, payload)
+    if out_of_credits?(response, payload)
+      @account.exhaust!
+      raise Datasheet::Research::OutOfCredits
+    end
     raise Datasheet::Research::Unavailable unless response.is_a?(Net::HTTPSuccess)
 
     payload
-  rescue JSON::ParserError, SocketError, Timeout::Error, SystemCallError
+  rescue JSON::ParserError, SocketError, Timeout::Error, SystemCallError, OpenSSL::SSL::SSLError, EOFError
     raise Datasheet::Research::Unavailable
+  end
+
+  def get(uri)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme == "https"
+    http.open_timeout = OPEN_TIMEOUT
+    http.read_timeout = READ_TIMEOUT
+    http.request(Net::HTTP::Get.new(uri))
   end
 
   def organic_results(payload)
@@ -53,23 +94,6 @@ class Datasheet::Research::SerpApiSearch
     return [] if no_results?(payload)
 
     links_from(payload["organic_results"])
-  end
-
-  def overview_node(payload, organic:)
-    overview = payload["ai_overview"]
-    return unless overview.is_a?(Hash)
-    return overview if overview_text(overview).present?
-
-    token = overview["page_token"].to_s
-    return overview if token.blank?
-
-    fetched = fetch_payload(engine: "google_ai_overview", page_token: token)
-    node = fetched["ai_overview"].is_a?(Hash) ? fetched["ai_overview"] : fetched
-    node.is_a?(Hash) ? node : overview
-  rescue Datasheet::Research::Unavailable
-    raise unless organic.any?
-
-    overview
   end
 
   def overview_text(node)

@@ -30,7 +30,7 @@ RSpec.describe Datasheet::Research::PageLists do
         </table>
       HTML
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(model_lists)
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(model_lists)
       reader = described_class.new(
         body: body,
         phrase: phrase("HL7011 CHEVROLET 99/23", "HL-7025S", "PUNTERIAS"),
@@ -39,7 +39,7 @@ RSpec.describe Datasheet::Research::PageLists do
       )
 
       expect(reader.call.applications.map(&:model)).to eq([ "LS" ])
-      expect(rewrite).to have_received(:call).with(body)
+      expect(rewrite).to have_received(:call).with(shown(body))
     end
 
     it "keeps empty lists when the page has no tables" do
@@ -62,7 +62,7 @@ RSpec.describe Datasheet::Research::PageLists do
     it "asks the model to read an overview that names the candidate" do
       overview = "HL7011 Chevrolet AFM desde 2007"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(overview).and_return(model_lists)
+      allow(rewrite).to receive(:call).with(shown(overview)).and_return(model_lists)
       reader = described_class.new(
         body: "<p>texto de la ficha</p>",
         overview: overview,
@@ -78,9 +78,9 @@ RSpec.describe Datasheet::Research::PageLists do
     end
 
     it "drops a transcription whose model is not a vehicle" do
-      overview = "HL7011 Chevrolet Engine Across 7011"
+      overview = "HL7011 Chevrolet Engine Across 2007"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(overview).and_return(engine_across_lists)
+      allow(rewrite).to receive(:call).with(shown(overview)).and_return(engine_across_lists)
       reader = described_class.new(
         body: "<p>texto de la ficha</p>",
         overview: overview,
@@ -94,9 +94,9 @@ RSpec.describe Datasheet::Research::PageLists do
     end
 
     it "keeps a vehicle range and drops a question attribute" do
-      body = "<p>83-301 aparece en el texto</p>"
+      body = "<p>83-301 aparece en el texto Chevrolet 2014</p>"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(silverado_lists)
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(silverado_lists)
       reader = described_class.new(
         body: body,
         phrase: phrase("83-301 CHEVROLET SILVERADO 14/18", "SP26-329R", "PISTONES"),
@@ -113,11 +113,51 @@ RSpec.describe Datasheet::Research::PageLists do
       expect(reader).to be_from_page
     end
 
+    it "does not ask the model when the text has no vehicle year" do
+      body = "<p>83-301 aparece en el texto</p><script>Nissan 2014</script>"
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call)
+      reader = described_class.new(
+        body: body,
+        phrase: phrase("83-301 CHEVROLET SILVERADO 14/18", "SP26-329R", "PISTONES"),
+        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO 14/18", part_number: "SP26-329R"),
+        rewrite: rewrite
+      )
+
+      expect(reader.call.applications).to be_empty
+      expect(rewrite).not_to have_received(:call)
+    end
+
+    it "sends the visible text around the part number" do
+      padding = "menu " * 4_000
+      body = "<script>tracking-pixel</script><p>#{padding}83-301 Chevrolet 2014</p>"
+      received = nil
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call) do |text|
+        received = text
+        silverado_lists
+      end
+      reader = described_class.new(
+        body: body,
+        phrase: phrase("83-301 CHEVROLET SILVERADO 14/18", "SP26-329R", "PISTONES"),
+        source_row: build(:source_row, description: "83-301 CHEVROLET SILVERADO 14/18", part_number: "SP26-329R"),
+        rewrite: rewrite
+      )
+
+      reader.call
+
+      expect(received).to include("83-301")
+      expect(received).to include("Chevrolet")
+      expect(received).to include("2014")
+      expect(received).not_to include("tracking-pixel")
+      expect(received.length).to be < padding.length
+    end
+
     it "does not send the overview when the page already has an application" do
-      body = "<p>83-301 aparece en el texto</p>"
+      body = "<p>83-301 aparece en el texto Chevrolet 2014</p>"
       overview = "83-301 texto del overview"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(silverado_lists)
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(silverado_lists)
       allow(rewrite).to receive(:call).with(overview)
       reader = described_class.new(
         body: body,
@@ -144,13 +184,13 @@ RSpec.describe Datasheet::Research::PageLists do
 
       expect(reader.call.applications).to be_empty
       expect(reader).not_to be_from_page
-      expect(rewrite).to have_received(:call).with(body)
+      expect(rewrite).not_to have_received(:call)
     end
 
     it "drops a transcription that says the applications are not confirmed" do
-      body = "<p>QJC20G aparece en el texto</p>"
+      body = "<p>QJC20G aparece en el texto Nissan 1989</p>"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(
         silverado_lists.with(
           part_number: "QJC20G",
           description: "QJC20G does not correspond to a standard code. The listed applications are examples, not confirmed fitments."
@@ -172,9 +212,9 @@ RSpec.describe Datasheet::Research::PageLists do
     end
 
     it "drops a transcription that says the part number does not match" do
-      body = "<p>QJC20G aparece en el texto</p>"
+      body = "<p>QJC20G aparece en el texto Nissan 1989</p>"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(
         empty_lists(part_number: "QJC20G", product: "Full gasket set").with(
           description: 'The part code "QJC20G" does not match a standard Nissan factory part number. Its compatibility is not established.',
           applications: [
@@ -200,9 +240,9 @@ RSpec.describe Datasheet::Research::PageLists do
     end
 
     it "keeps a piston list that only disclaims other part numbers" do
-      body = "<p>83-301 aparece en el texto</p>"
+      body = "<p>83-301 aparece en el texto Chevrolet 2014</p>"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(
         empty_lists(part_number: "83-301", product: "Engine piston set").with(
           description: "Piston set for the Silverado 1500. Other GM numbers are not identified as direct replacements.",
           applications: [
@@ -228,9 +268,9 @@ RSpec.describe Datasheet::Research::PageLists do
     end
 
     it "drops an interchange that repeats the searched number" do
-      body = "<p>83-301 aparece en el texto</p>"
+      body = "<p>83-301 aparece en el texto Chevrolet 2014</p>"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(
         empty_lists(part_number: "83-301", product: "Pistón").with(
           applications: [
             application_row(manufacturer: "Chevrolet", model: "Silverado 1500", start_year: "2014", end_year: "2018")
@@ -253,9 +293,9 @@ RSpec.describe Datasheet::Research::PageLists do
     end
 
     it "drops a model that is a sentence fragment" do
-      body = "<p>FS-001225 aparece en el texto</p>"
+      body = "<p>FS-001225 aparece en el texto Nissan 1989</p>"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(
         empty_lists(part_number: "FS-001225", product: "Empaque").with(
           applications: [
             application_row(manufacturer: "Nissan", model: "Or Major", start_year: "1989", end_year: "2003"),
@@ -275,9 +315,9 @@ RSpec.describe Datasheet::Research::PageLists do
     end
 
     it "keeps a vehicle name with a number or an ampersand" do
-      body = "<p>9-0511S aparece en el texto</p>"
+      body = "<p>9-0511S aparece en el texto Chrysler 2011</p>"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(
         empty_lists(part_number: "9-0511S", product: "Kit").with(
           applications: [
             application_row(manufacturer: "Nissan", model: "240SX", start_year: "1989", end_year: "1998"),
@@ -297,9 +337,9 @@ RSpec.describe Datasheet::Research::PageLists do
     end
 
     it "drops an approximate measurement and a part number used as its class" do
-      body = "<p>83-301 aparece en el texto</p>"
+      body = "<p>83-301 aparece en el texto Chevrolet 2014</p>"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(
         silverado_lists.with(
           attributes: [
             described_class::AttributeRow.new(attribute_class: "83-301 00", name: "External piston diameter", unit: "mm", value: "Approximately 99.6"),
@@ -319,9 +359,9 @@ RSpec.describe Datasheet::Research::PageLists do
     end
 
     it "does not publish interchanges when there is no vehicle application" do
-      body = "<p>83-301 aparece en el texto</p>"
+      body = "<p>83-301 aparece en el texto Chevrolet 2014</p>"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(
         empty_lists(part_number: "83-301", product: "Oregon 83-301 Oil Filter").with(
           interchanges: [ described_class::InterchangeRow.new(number: "15400-PFB-004", brand: "Honda", origin: "Aftermarket") ],
           attributes: [ described_class::AttributeRow.new(attribute_class: "", name: "Thread", unit: "mm", value: "20 x 1.5") ]
@@ -360,9 +400,9 @@ RSpec.describe Datasheet::Research::PageLists do
     end
 
     it "fills a blank engine from the phrase and keeps a measurement the page already gave" do
-      body = "<p>83-301 aparece en el texto</p>"
+      body = "<p>83-301 aparece en el texto Chevrolet 2014</p>"
       rewrite = double("rewrite")
-      allow(rewrite).to receive(:call).with(body).and_return(
+      allow(rewrite).to receive(:call).with(shown(body)).and_return(
         empty_lists(part_number: "83-301", product: "Pistón").with(
           applications: [
             application_row(manufacturer: "Chevrolet", model: "Silverado 1500", start_year: "2014", end_year: "2018"),
@@ -407,6 +447,10 @@ RSpec.describe Datasheet::Research::PageLists do
     end
   end
 
+  def shown(body)
+    Datasheet::Research::CatalogRows.new(body).visible_text
+  end
+
   def phrase(description, part_number = "RM-152", item_group = "BOMBA DE ACEITE")
     Datasheet::Research::Phrase.new(description: description, part_number: part_number, item_group: item_group).call
   end
@@ -449,7 +493,7 @@ RSpec.describe Datasheet::Research::PageLists do
       product: "",
       description: "",
       applications: [
-        application_row(manufacturer: "Chevrolet", model: "Engine Across", start_year: "7011")
+        application_row(manufacturer: "Chevrolet", model: "Engine Across", start_year: "2007")
       ],
       interchanges: [],
       attributes: [],

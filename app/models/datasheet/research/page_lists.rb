@@ -100,9 +100,10 @@ class Datasheet::Research::PageLists
   end
 
   def add_model(lists, text)
-    plain = text.to_s
+    plain = transcription_text(text)
     return lists if plain.blank? || @model_texts.include?(plain)
     return lists unless @phrase.candidates.any? { |candidate| Datasheet::Research::Phrase.mentioned?(plain, candidate) }
+    return lists unless transcribable?(plain)
 
     @model_texts << plain
     rewritten = usable(@rewrite.call(plain))
@@ -118,6 +119,15 @@ class Datasheet::Research::PageLists
       interchanges: rewritten.interchanges,
       attributes: rewritten.attributes
     )
+  end
+
+  def transcription_text(text)
+    Datasheet::Research::CatalogRows.new(text).excerpt(@phrase.candidates)
+  end
+
+  def transcribable?(text)
+    text.match?(/\b(?:#{Datasheet::Research::Phrase::VEHICLE_BRANDS.join("|")})\b/i) &&
+      text.scan(/\b(?:19|20)\d{2}\b/).any? { |year| (1950..2030).cover?(year.to_i) }
   end
 
   def usable(lists)

@@ -11,7 +11,7 @@ class Datasheet::Research::PageRewrite
 
   def ask(body)
     RubyLLM.chat(model: MODEL, provider: :openai, assume_model_exists: true)
-      .with_thinking(effort: :medium)
+      .with_thinking(effort: :low)
       .with_schema(Datasheet::Research::PageSchema)
       .ask(prompt(body))
   end
@@ -39,12 +39,16 @@ class Datasheet::Research::PageRewrite
       If the text does not confirm that this part number fits the vehicles, return empty applications, interchanges, and attributes.
       Say that the list is not established in the description.
 
-      #{utf8(body)}
+      #{visible_text(body)}
     TEXT
   end
 
   def utf8(text)
     text.to_s.dup.force_encoding(Encoding::UTF_8).scrub
+  end
+
+  def visible_text(body)
+    utf8(Datasheet::Research::CatalogRows.new(utf8(body)).visible_text)
   end
 
   def lists_from(data)

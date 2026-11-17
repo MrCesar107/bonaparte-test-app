@@ -63,28 +63,83 @@ class Datasheet::Research::PageSearch
   end
 
   def search_query(candidate, query)
-    ATTEMPTS.times do
-      leads = search_leads(query)
-      return :out_of_credits if leads == :out_of_credits
-      next if leads == :retry
+    reply = search_reply(query)
+    return reply if reply == :out_of_credits || reply == :failed
 
-      pages, failed = pages_for(leads)
-      found = part_number_hit(candidate, pages) || overview_hit(candidate)
-      return found if found
-      return :not_found unless failed
+    organic = leads_from(reply)
+    pages, organic_failed = pages_for(organic)
+    found = part_number_hit(candidate, pages)
+    return found if found
+
+    overview = load_overview(reply)
+    return :out_of_credits if overview == :out_of_credits
+    if overview == :overview_unavailable
+      return :failed if pages.empty?
+
+      overview = reply
     end
 
-    :failed
+    citations = citation_leads(overview, organic)
+    citation_pages, citation_failed = pages_for(citations)
+    found = part_number_hit(candidate, citation_pages)
+    return found if found
+
+    @overview = text_of(overview)
+    found = overview_hit(candidate)
+    return found if found
+    return :failed if downloads_failed?(organic, organic_failed, citations, citation_failed)
+
+    :not_found
   end
 
-  def search_leads(query)
-    response = @search.call(query)
-    @overview = response.respond_to?(:overview) ? response.overview.to_s : ""
-    Array(response).map { |item| lead(item) }
-  rescue Datasheet::Research::OutOfCredits
-    :out_of_credits
-  rescue Datasheet::Research::Unavailable
-    :retry
+  def search_reply(query)
+    ATTEMPTS.times do |attempt|
+      return @search.call(query)
+    rescue Datasheet::Research::OutOfCredits
+      return :out_of_credits
+    rescue Datasheet::Research::Unavailable
+      return :failed if attempt == ATTEMPTS - 1
+    end
+  end
+
+  def load_overview(reply)
+    return reply unless reply.respond_to?(:pending_overview?) && reply.pending_overview?
+
+    ATTEMPTS.times do |attempt|
+      return @search.resolve_overview(reply)
+    rescue Datasheet::Research::OutOfCredits
+      return :out_of_credits
+    rescue Datasheet::Research::Unavailable
+      return :overview_unavailable if attempt == ATTEMPTS - 1
+    end
+  end
+
+  def leads_from(reply)
+    Array(reply).map { |item| lead(item) }
+  end
+
+  def citation_leads(reply, organic)
+    return [] unless reply.respond_to?(:references)
+
+    seen = organic.map(&:url)
+    Array(reply.references).filter_map { |item|
+      found = lead(item)
+      found unless found.url.blank? || seen.include?(found.url)
+    }
+  end
+
+  def text_of(reply)
+    return "" unless reply.respond_to?(:overview)
+
+    reply.overview.to_s
+  end
+
+  def downloads_failed?(organic, organic_failed, citations, citation_failed)
+    return false if organic.empty? && citations.empty?
+
+    organic_down = organic.empty? || organic_failed
+    citations_down = citations.empty? || citation_failed
+    organic_down && citations_down && (organic_failed || citation_failed)
   end
 
   def lead(item)
@@ -96,13 +151,21 @@ class Datasheet::Research::PageSearch
   def pages_for(leads)
     failed = false
     pages = leads.filter_map do |item|
-      [ @fetch.call(item.url), item.snippet ]
+      [ fetch_page(item.url), item.snippet ]
     rescue Datasheet::Research::Unavailable
       failed = true
       nil
     end
 
     [ pages, failed && pages.empty? ]
+  end
+
+  def fetch_page(url)
+    ATTEMPTS.times do |attempt|
+      return @fetch.call(url)
+    rescue Datasheet::Research::Unavailable
+      raise if attempt == ATTEMPTS - 1
+    end
   end
 
   def part_number_hit(candidate, pages)

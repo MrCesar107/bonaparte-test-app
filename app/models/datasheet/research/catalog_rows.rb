@@ -5,6 +5,8 @@ require "stringio"
 class Datasheet::Research::CatalogRows
   PART = /[A-Z0-9][A-Z0-9.\-\/]*\d[A-Z0-9.\-\/]*/i
   INTERCHANGE = /intercambio|interchange|cross\s*ref|reemplazo|equivalen/i
+  EXCERPT_LIMIT = 12_000
+  EXCERPT_PREFIX = 1_500
 
   def initialize(body)
     @body = body.to_s
@@ -12,6 +14,19 @@ class Datasheet::Research::CatalogRows
 
   def confirms?(candidate)
     applications_for(candidate).any?
+  end
+
+  def visible_text
+    text
+  end
+
+  def excerpt(candidates)
+    full = visible_text
+    return full if full.length <= EXCERPT_LIMIT
+
+    index = mention_index(full, Array(candidates))
+    start = index.nil? ? 0 : [ index - EXCERPT_PREFIX, 0 ].max
+    full[start, EXCERPT_LIMIT]
   end
 
   def applications_for(candidate)
@@ -29,6 +44,17 @@ class Datasheet::Research::CatalogRows
 
   def lines
     @lines ||= text.split(/\n+/).map(&:squish).reject(&:blank?)
+  end
+
+  def mention_index(full, candidates)
+    full.scan(PART) do
+      token = Regexp.last_match(0)
+      next unless candidates.any? { |candidate| Datasheet::Research::Phrase.same_number?(token, candidate) }
+
+      return Regexp.last_match.begin(0)
+    end
+
+    nil
   end
 
   def text

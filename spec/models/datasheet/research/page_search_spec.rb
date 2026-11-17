@@ -81,6 +81,21 @@ RSpec.describe Datasheet::Research::PageSearch do
 
       expect(hit).to have_attributes(equivalent: "DM-152", url: match.url)
       expect(search).to have_received(:call).once
+      expect(fetch).to have_received(:call).with("https://parts.test/down").exactly(3).times
+    end
+
+    it "retries a failed download three times without searching again" do
+      search = search_returning(
+        '"DM-152" Nissan oil pump 1976-2014' => [ "https://parts.test/down" ],
+        '"RM-152" Nissan oil pump 1976-2014' => []
+      )
+      fetch = instance_double(Proc)
+      allow(fetch).to receive(:call).and_raise(Datasheet::Research::Unavailable)
+
+      expect(search_pages(search:, fetch:)).to eq(:not_found)
+      expect(search).to have_received(:call).with(%("DM-152" Nissan oil pump 1976-2014)).once
+      expect(search).not_to have_received(:call).with(%("DM-152" Nissan oil pump))
+      expect(fetch).to have_received(:call).with("https://parts.test/down").exactly(3).times
     end
 
     it "does not accept a single product page that lacks the interchange" do
@@ -214,7 +229,7 @@ RSpec.describe Datasheet::Research::PageSearch do
         part_number: "",
         body: "<title>Oregon 83-301 Oil Filter</title><p>83-301 oil filter</p>"
       )
-      overview = "83-301 is listed apart from the piston applications"
+      overview = "83-301 is listed apart from the piston applications Chevrolet 2014"
       reply = Datasheet::Research::SerpApiSearch::Reply.new([ filter.url ], overview)
       search = instance_double(Datasheet::Research::SerpApiSearch)
       allow(search).to receive(:call).and_return([])
@@ -248,7 +263,7 @@ RSpec.describe Datasheet::Research::PageSearch do
         body: "<title>Oregon 83-301 Oil Filter</title><p>83-301 oil filter</p>"
       )
       piston = page(url: "https://parts.test/piston", part_number: "SP26-329R", body: vehicle_page("SP26-329R", years: "2014-2018"))
-      overview = "83-301 is listed apart from the piston applications"
+      overview = "83-301 is listed apart from the piston applications Chevrolet 2014"
       reply = Datasheet::Research::SerpApiSearch::Reply.new([ filter.url ], overview)
       search = instance_double(Datasheet::Research::SerpApiSearch)
       allow(search).to receive(:call).and_return([])
@@ -280,7 +295,7 @@ RSpec.describe Datasheet::Research::PageSearch do
         body: "<title>Oregon 83-301 Oil Filter</title><p>83-301 oil filter</p>"
       )
       piston = page(url: "https://parts.test/piston", part_number: "SP26-329R", body: vehicle_page("SP26-329R", years: "2014-2018"))
-      overview = "83-301 is listed apart from the piston applications"
+      overview = "83-301 is listed apart from the piston applications Chevrolet 2014"
       reply = Datasheet::Research::SerpApiSearch::Reply.new([ filter.url ], overview)
       search = instance_double(Datasheet::Research::SerpApiSearch)
       allow(search).to receive(:call).and_return([])
@@ -362,6 +377,37 @@ RSpec.describe Datasheet::Research::PageSearch do
 
       expect(hit).to have_attributes(equivalent: "9-0511S", url: match.url)
       expect(sheet.queries["9-0511S"]).to eq(%("9-0511S" Chrysler timing chain kit 2011-2013))
+    end
+
+    it "does not load the AI Overview when an organic page already has the lists" do
+      match = page(url: "https://parts.test/dm-152", part_number: "DM-152", body: vehicle_page("DM-152"))
+      reply = Datasheet::Research::SerpApiSearch::Reply.new([ match.url ], "", page_token: "token-1")
+      search = instance_double(Datasheet::Research::SerpApiSearch)
+      allow(search).to receive(:call).and_return(reply)
+      allow(search).to receive(:resolve_overview)
+
+      hit = search_pages(search:, fetch: fetch_returning(match))
+
+      expect(hit).to have_attributes(equivalent: "DM-152", url: match.url)
+      expect(search).not_to have_received(:resolve_overview)
+    end
+
+    it "opens overview citations after the organic pages miss" do
+      missed = page(url: "https://parts.test/other", part_number: "M200", body: "<title>Other pump</title>")
+      match = page(url: "https://parts.test/dm-152", part_number: "DM-152", body: vehicle_page("DM-152"))
+      reply = Datasheet::Research::SerpApiSearch::Reply.new([ missed.url ], "", page_token: "token-1")
+      citation = Datasheet::Research::SerpApiSearch::Result.new(url: match.url, snippet: "DM-152")
+      resolved = Datasheet::Research::SerpApiSearch::Reply.new([], "", references: [ citation ])
+      search = instance_double(Datasheet::Research::SerpApiSearch)
+      fetch = instance_double(Proc)
+      expect(search).to receive(:call).with(%("DM-152" Nissan oil pump 1976-2014)).and_return(reply)
+      expect(fetch).to receive(:call).with(missed.url).ordered.and_return(missed)
+      expect(search).to receive(:resolve_overview).with(reply).ordered.and_return(resolved)
+      expect(fetch).to receive(:call).with(match.url).ordered.and_return(match)
+
+      hit = search_pages(search:, fetch:)
+
+      expect(hit).to have_attributes(equivalent: "DM-152", url: match.url)
     end
   end
 
