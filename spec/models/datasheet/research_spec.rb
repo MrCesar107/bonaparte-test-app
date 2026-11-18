@@ -4,15 +4,20 @@ require "zip"
 RSpec.describe Datasheet::Research do
   it "replaces the datasheet source rows with the Origen sheet and marks it created" do
     datasheet = create(:datasheet)
-    create(:source_row, datasheet: datasheet, part_number: "OLD-1")
+    create_list(:source_row, 20, datasheet: datasheet, part_number: "OLD-1")
     create(:source_row, part_number: "KEEP-ME")
 
-    File.open(file_fixture("origin.xlsx"), "rb") do |file|
-      described_class.new(datasheet, file, search: empty_search, fetch: unused_fetch).call
+    deletes = []
+    subscriber = ->(event) { deletes << event.payload[:sql] }
+    ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+      File.open(file_fixture("origin.xlsx"), "rb") do |file|
+        described_class.new(datasheet, file, search: empty_search, fetch: unused_fetch).call
+      end
     end
 
     rows = datasheet.source_rows
 
+    expect(deletes.grep(/\ADELETE FROM "source_rows"/).size).to eq(1)
     expect(datasheet.reload).to be_created
     expect(rows.map(&:position)).to eq([ 1, 2 ])
     expect(rows.map(&:part_number)).to eq([ "DM-152", "X-200" ])
@@ -44,6 +49,21 @@ RSpec.describe Datasheet::Research do
 
     view = Datasheet::CatalogView.new(datasheet: datasheet).call
     expect(view.metrics).to have_attributes(references: 0, applications: 0, interchanges: 0, attributes: 0, without_sheet: 2)
+  end
+
+  it "keeps the old source rows when the replacement insert fails" do
+    datasheet = create(:datasheet)
+    previous_row = create(:source_row, datasheet: datasheet, part_number: "OLD-1")
+
+    File.open(file_fixture("origin.xlsx"), "rb") do |file|
+      research = described_class.new(datasheet, file, search: empty_search, fetch: unused_fetch)
+      allow(research).to receive(:build_source_rows_values).and_return([ { position: nil, part_number: "NEW" } ])
+
+      expect { research.call }.to raise_error(ActiveRecord::NotNullViolation)
+    end
+
+    expect(datasheet.reload).to be_failed
+    expect(datasheet.source_rows).to contain_exactly(previous_row)
   end
 
   it "publishes the accepted page and counts it in metrics" do
@@ -107,6 +127,7 @@ RSpec.describe Datasheet::Research do
 
   it "marks the datasheet failed when Origen has no data rows" do
     datasheet = create(:datasheet)
+    create(:source_row, datasheet: datasheet)
 
     File.open(file_fixture("origin_header.xlsx"), "rb") do |file|
       described_class.new(datasheet, file).call

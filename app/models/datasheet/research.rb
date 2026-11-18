@@ -14,11 +14,13 @@ class Datasheet::Research
   def call
     spreadsheet = ::Datasheet::Research::SpreadsheetReader.new(@file).call
     rows = build_source_rows_values(spreadsheet)
-    @datasheet.source_rows.destroy_all
+    @datasheet.with_lock(requires_new: true) do
+      @datasheet.source_rows.delete_all
+      @datasheet.source_rows.insert_all!(rows) if rows.any?
+    end
 
     return @datasheet.failed! if rows.empty?
 
-    @datasheet.source_rows.insert_all(rows)
     research_source_rows ? @datasheet.failed! : @datasheet.created!
   rescue StandardError
     @datasheet.failed!
