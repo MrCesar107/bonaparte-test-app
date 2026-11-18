@@ -2,6 +2,24 @@ require "rails_helper"
 
 RSpec.describe Datasheet::CatalogView do
   describe "#call" do
+    it "loads associated records only for parts referenced by the upload" do
+      upload = create(:datasheet)
+      matching = create(:datasheet, part_store: upload.part_store, equivalent: "DM-152", status: :created)
+      unrelated = create(:datasheet, part_store: upload.part_store, equivalent: "OTHER", status: :created)
+      create(:part, datasheet: matching)
+      create(:part, datasheet: unrelated, part_reference: "OTHER")
+      create(:source_row, datasheet: upload, part_number: "RM-152", description: "DM-152 NISSAN PICKUP")
+      [ matching, unrelated ].each { |sheet| create(:application, datasheet: sheet) }
+      loads = Hash.new(0)
+      subscriber = ->(event) { loads[event.payload[:class_name]] += event.payload[:record_count] }
+
+      ActiveSupport::Notifications.subscribed(subscriber, "instantiation.active_record") do
+        expect(described_class.new(datasheet: upload).call.catalog.map(&:reference)).to eq([ "RM-152" ])
+      end
+
+      expect(loads.values_at("Part", "Datasheet", "Application")).to eq([ 1, 1, 1 ])
+    end
+
     it "keeps origin rows in file order and publishes a created sheet" do
       part_store = create(:part_store)
       upload = create(:datasheet, part_store: part_store)

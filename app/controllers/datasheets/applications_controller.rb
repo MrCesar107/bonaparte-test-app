@@ -1,4 +1,5 @@
 class Datasheets::ApplicationsController < Datasheets::SectionsController
-  def show
+  def index
+    @rows = catalog_view.applications
   end
 end

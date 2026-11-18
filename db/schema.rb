@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_13_081300) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -83,6 +83,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_081300) do
     t.datetime "created_at"
     t.datetime "updated_at"
     t.string "name"
+    t.index ["id", "part_store_id"], name: "index_datasheets_on_id_and_part_store_id", unique: true
     t.index ["part_store_id", "equivalent"], name: "index_datasheets_on_part_store_id_and_equivalent", unique: true
     t.index ["part_store_id"], name: "index_datasheets_on_part_store_id"
   end
@@ -119,7 +120,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_081300) do
     t.string "unconfirmed_tokens", array: true
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "part_store_id", null: false
     t.index ["datasheet_id"], name: "index_parts_on_datasheet_id"
+    t.index ["part_store_id", "fingerprint"], name: "index_parts_on_part_store_id_and_fingerprint", unique: true
   end
 
   create_table "source_rows", force: :cascade do |t|
@@ -158,5 +161,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_081300) do
   add_foreign_key "datasheets", "part_stores"
   add_foreign_key "interchanges", "datasheets"
   add_foreign_key "parts", "datasheets"
+  add_foreign_key "parts", "datasheets", column: ["datasheet_id", "part_store_id"], primary_key: ["id", "part_store_id"], name: "fk_parts_datasheet_store", on_update: :cascade
   add_foreign_key "source_rows", "datasheets"
 end

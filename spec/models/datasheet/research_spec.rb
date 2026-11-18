@@ -109,6 +109,62 @@ RSpec.describe Datasheet::Research do
     expect(datasheet.part_store.datasheets.find_by(equivalent: "X-200")).to be_nil
   end
 
+  it "reuses a datasheet created earlier in the same batch" do
+    datasheet = create(:datasheet)
+    page = accepted_page
+    search = instance_double(Datasheet::Research::SerpApiSearch)
+    expect(search).to receive(:call).once.and_return([ page.url ])
+    fetch = instance_double(Datasheet::Research::PageFetch, call: page)
+    with_origin_workbook(
+      [ "1", "RM-152", "BOMBA", "DM-152 NISSAN PICKUP", "BOMBAS", "Rexite", "PZA" ],
+      [ "2", "RM-153", "BOMBA", "DM-152 NISSAN PICKUP", "BOMBAS", "Rexite", "PZA" ],
+      [ "3", "RM-153", "BOMBA", "DM-152 NISSAN PICKUP", "BOMBAS", "Rexite", "PZA" ]
+    ) do |workbook|
+      described_class.new(datasheet, workbook, search: search, fetch: fetch).call
+    end
+
+    sheet = datasheet.part_store.datasheets.find_by!(equivalent: "DM-152")
+    expect(sheet.parts.order(:part_reference).pluck(:part_reference)).to eq([ "RM-152", "RM-153" ])
+    expect(datasheet.reload).to be_created
+  end
+
+  it "attaches rows to a saved datasheet in one insert without per-part existence checks" do
+    upload = create(:datasheet)
+    sheet = create(:datasheet, part_store: upload.part_store, equivalent: "DM-152", status: :created)
+    create(:part, datasheet: sheet, part_reference: "TEMPLATE", product: "Bomba de aceite")
+    rows = (1..20).map { |number| [ number, "RM-#{number}", "BOMBA", "DM-152 NISSAN PICKUP", "BOMBAS" ] }
+    queries = []
+    subscriber = ->(event) { queries << event.payload[:sql] }
+
+    with_origin_workbook(*rows) do |workbook|
+      ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+        described_class.new(upload, workbook, search: empty_search, fetch: unused_fetch).call
+      end
+    end
+
+    expect(queries.grep(/\AINSERT INTO "parts"/).size).to eq(1)
+    expect(queries.grep(/\ASELECT 1 AS one FROM "parts"/)).to be_empty
+    expect(sheet.parts.count).to eq(21)
+    expect(sheet.parts.pluck(:product).uniq).to eq([ "Bomba de aceite" ])
+  end
+
+  it "uses labels from the researched page when the workbook leaves Item Group blank" do
+    datasheet = create(:datasheet)
+    page = accepted_page
+    search = instance_double(Datasheet::Research::SerpApiSearch, call: [ page.url ])
+    fetch = instance_double(Datasheet::Research::PageFetch, call: page)
+
+    with_origin_workbook([ "1", "RM-152", "BOMBA", "DM-152 NISSAN PICKUP", nil, "Rexite", "PZA" ]) do |workbook|
+      described_class.new(datasheet, workbook, search: search, fetch: fetch).call
+    end
+
+    expect(datasheet.reload).to be_created
+    expect(datasheet.source_rows.first.item_group).to be_nil
+    expect(Part.find_by!(part_reference: "RM-152")).to have_attributes(
+      item_group: nil, subsystem: "Bombas", product: "Bomba de aceite"
+    )
+  end
+
   it "stores a whole number from the sheet without a decimal" do
     datasheet = create(:datasheet)
     workbook = numeric_workbook
@@ -160,6 +216,19 @@ RSpec.describe Datasheet::Research do
 
     expect(datasheet.reload).to be_failed
     expect(datasheet.part_store.datasheets.find_by(equivalent: "DM-152")).to be_failed
+  end
+
+  def with_origin_workbook(*rows)
+    package = Axlsx::Package.new
+    package.workbook.add_worksheet(name: "Origen") do |worksheet|
+      worksheet.add_row([ "Código", "Número", "Artículo", "Descripción", "Grupo", "Marca", "Unidad" ])
+      rows.each { |row| worksheet.add_row(row) }
+    end
+
+    Tempfile.create([ "origin", ".xlsx" ]) do |workbook|
+      package.serialize(workbook.path)
+      yield workbook
+    end
   end
 
   def numeric_workbook

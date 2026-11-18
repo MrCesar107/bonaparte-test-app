@@ -3,7 +3,7 @@
   <dl class="p-2">
     <div class="grid grid-cols-2 gap-2 border-b border-gray-300 py-2">
       <dt>Referencias</dt>
-      <dd><%= @view.metrics.references %></dd>
+      <dd><%= @metrics.references %></dd>
     </div>
     <div class="py-2 font-semibold">Aplicaciones</div>
     <div class="grid grid-cols-2 gap-2 py-1">
@@ -12,7 +12,7 @@
     </div>
     <div class="grid grid-cols-2 gap-2 border-b border-gray-300 py-1">
       <dt>Incrementos</dt>
-      <dd><%= @view.metrics.applications %></dd>
+      <dd><%= @metrics.applications %></dd>
     </div>
     <div class="py-2 font-semibold">Intercambios</div>
     <div class="grid grid-cols-2 gap-2 py-1">
@@ -21,7 +21,7 @@
     </div>
     <div class="grid grid-cols-2 gap-2 border-b border-gray-300 py-1">
       <dt>Incrementos</dt>
-      <dd><%= @view.metrics.interchanges %></dd>
+      <dd><%= @metrics.interchanges %></dd>
     </div>
     <div class="py-2 font-semibold">Atributos</div>
     <div class="grid grid-cols-2 gap-2 py-1">
@@ -30,11 +30,11 @@
     </div>
     <div class="grid grid-cols-2 gap-2 border-b border-gray-300 py-1">
       <dt>Incrementos</dt>
-      <dd><%= @view.metrics.attributes %></dd>
+      <dd><%= @metrics.attributes %></dd>
     </div>
     <div class="grid grid-cols-2 gap-2 py-2">
       <dt>Sin ficha</dt>
-      <dd><%= @view.metrics.without_sheet %></dd>
+      <dd><%= @metrics.without_sheet %></dd>
     </div>
   </dl>
 <% end %>

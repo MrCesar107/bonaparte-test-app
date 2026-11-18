@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = [ "trigger", "panel" ]
+  static targets = [ "trigger", "panel", "section" ]
 
   toggle() {
     const open = this.element.dataset.open !== "true"
@@ -14,10 +14,18 @@ export default class extends Controller {
     }
 
     if (open) {
+      this.loadSelectedSection()
       this.expand()
     } else {
       this.collapse()
     }
+  }
+
+  loadSelectedSection() {
+    if (this.element.dataset.open !== "true") return
+
+    const frame = this.sectionTargets.find(section => !section.parentElement.classList.contains("hidden"))
+    if (frame && !frame.hasAttribute("src")) frame.src = frame.dataset.src
   }
 
   expand() {

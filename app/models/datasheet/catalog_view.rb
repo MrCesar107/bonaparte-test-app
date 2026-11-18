@@ -30,22 +30,14 @@ class Datasheet::CatalogView
   end
 
   def call
-    published = catalog_parts
-
     View.new(
-      origin: origin_rows,
-      catalog: published.map { |part| catalog_row(part) },
-      applications: published.flat_map { |part| application_rows(part) },
-      interchanges: published.flat_map { |part| interchange_rows(part) },
-      attributes: published.flat_map { |part| attribute_rows(part) },
-      metrics: metrics_for(published)
+      origin: origin, catalog: catalog, applications: applications,
+      interchanges: interchanges, attributes: attributes, metrics: metrics
     )
   end
 
-  private
-
-  def origin_rows
-    @datasheet.source_rows.map do |row|
+  def origin
+    source_rows.map do |row|
       OriginRow.new(
         internal_code: row.internal_code,
         part_number: row.part_number,
@@ -58,22 +50,57 @@ class Datasheet::CatalogView
     end
   end
 
+  def catalog
+    catalog_parts.map { |part| catalog_row(part) }
+  end
+
+  def applications
+    preload_details(:applications)
+    catalog_parts.flat_map { |part| application_rows(part) }
+  end
+
+  def interchanges
+    preload_details(:interchanges)
+    catalog_parts.flat_map { |part| interchange_rows(part) }
+  end
+
+  def attributes
+    preload_details(:part_attributes)
+    catalog_parts.flat_map { |part| attribute_rows(part) }
+  end
+
+  def metrics
+    preload_details(:applications, :interchanges, :part_attributes)
+    metrics_for(catalog_parts)
+  end
+
+  private
+
+  def source_rows
+    @source_rows ||= @datasheet.source_rows.to_a
+  end
+
   def catalog_parts
-    @datasheet.source_rows.filter_map { |row| part_for(row) }
+    @catalog_parts ||= source_rows.filter_map { |row| part_for(row) }
       .uniq
       .select { |part| part.datasheet.created? }
       .sort_by(&:part_reference)
   end
 
   def part_for(row)
-    parts_by_fingerprint["#{row.part_number} #{row.description}".upcase.squish]
+    parts_by_fingerprint[row.fingerprint]
   end
 
   def parts_by_fingerprint
-    @parts_by_fingerprint ||= Part.joins(:datasheet)
-      .includes(datasheet: [ :applications, :interchanges, :part_attributes ])
-      .where(datasheets: { part_store_id: @datasheet.part_store_id })
+    @parts_by_fingerprint ||= Part.for_part_store(@datasheet.part_store_id)
+      .where(fingerprint: source_rows.map(&:fingerprint).uniq)
+      .preload(:datasheet)
       .index_by(&:fingerprint)
+  end
+
+  def preload_details(*associations)
+    sheets = catalog_parts.map(&:datasheet).uniq
+    ActiveRecord::Associations::Preloader.new(records: sheets, associations: associations).call
   end
 
   def catalog_row(part)
@@ -115,7 +142,11 @@ class Datasheet::CatalogView
   def years_for(application)
     return [ application.start_year ] if application.end_year.blank?
 
-    (application.start_year.to_i..application.end_year.to_i).map(&:to_s)
+    year_range(application).map(&:to_s)
+  end
+
+  def year_range(application)
+    application.start_year.to_i..application.end_year.to_i
   end
 
   def interchange_rows(part)
@@ -150,12 +181,12 @@ class Datasheet::CatalogView
       references: published.size,
       applications: published.sum {
         |part| part.datasheet.applications.sum {
-          |application| years_for(application).size
+          |application| application.end_year.blank? ? 1 : year_range(application).size
         }
       },
       interchanges: published.sum { |part| part.datasheet.interchanges.size },
       attributes: published.sum { |part| part.datasheet.part_attributes.size },
-      without_sheet: @datasheet.source_rows.count { |row| part_for(row).nil? || !part_for(row).datasheet.created? }
+      without_sheet: source_rows.count { |row| !part_for(row)&.datasheet&.created? }
     )
   end
 end

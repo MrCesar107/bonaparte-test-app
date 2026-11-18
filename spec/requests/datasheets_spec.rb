@@ -127,6 +127,34 @@ RSpec.describe "Datasheets", type: :request do
     end
   end
 
+  describe "GET datasheet sections" do
+    before { sign_in create(:user) }
+
+    it "renders the matching frame for each section URL" do
+      datasheet = create(:datasheet, status: :created)
+      sheet = create(:datasheet, part_store: datasheet.part_store, equivalent: "DM-152", status: :created)
+      create(:part, datasheet: sheet, product: "Bomba de aceite")
+      create(:source_row, datasheet: datasheet, part_number: "RM-152", description: "DM-152 NISSAN PICKUP")
+      create(:application, datasheet: sheet, model: "Cosmos")
+      create(:interchange, datasheet: sheet, number: "ALT-152")
+      create(:part_attribute, datasheet: sheet, name: "Diámetro")
+
+      {
+        metrics: [ datasheet_metrics_path(datasheet), "Catálogo Bonaparte" ],
+        applications: [ datasheet_applications_path(datasheet), "Cosmos" ],
+        interchanges: [ datasheet_interchanges_path(datasheet), "ALT-152" ],
+        attributes: [ datasheet_attributes_path(datasheet), "Diámetro" ],
+        catalog_rows: [ datasheet_catalog_rows_path(datasheet), "Bomba de aceite" ]
+      }.each do |section, (path, content)|
+        get path
+
+        expect(response).to have_http_status(:ok)
+        frame = Nokogiri::HTML(response.body).at_css("turbo-frame##{section}_#{datasheet.id}")
+        expect(frame.text).to include(content)
+      end
+    end
+  end
+
   describe "GET /datasheets/:id/export" do
     let(:user) { create(:user) }
     let(:part_store) { create(:part_store, name: "North Garage") }

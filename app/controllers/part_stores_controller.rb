@@ -17,7 +17,6 @@ class PartStoresController < ApplicationController
   end
 
   def show
-    @part_store = PartStore.find(params[:id])
     @datasheets = datasheets
   end
 

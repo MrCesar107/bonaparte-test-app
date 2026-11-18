@@ -1,7 +1,41 @@
 require "rails_helper"
 
 RSpec.describe Datasheet::Research::StoredRow do
+  it "checks existing fingerprints in a single query for a batch" do
+    upload = create(:datasheet)
+    sheet = create(:datasheet, part_store: upload.part_store, equivalent: "DM-152")
+    rows = Array.new(5) do |index|
+      part = create_part(sheet, part_reference: "RM-#{index}")
+      create(:source_row, datasheet: upload, part_number: part.part_reference, description: part.phrase)
+    end
+    queries = []
+    subscriber = ->(event) { queries << event.payload[:sql] }
+
+    ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+      lookup = described_class::Lookup.new(part_store: upload.part_store, source_rows: rows)
+      results = rows.map do |row|
+        described_class.new(part_store: upload.part_store, source_row: row, lookup: lookup).call
+      end
+      expect(results).to all(eq(:skipped))
+    end
+
+    expect(queries.grep(/SELECT.*FROM "parts"/)).to have_attributes(size: 1)
+  end
+
   describe "#call" do
+    it "skips a conflicting insert when another import writes the fingerprint after lookup" do
+      upload = create(:datasheet)
+      sheet = create(:datasheet, part_store: upload.part_store, equivalent: "DM-152")
+      source_row = create(:source_row, datasheet: upload, part_number: "DM-152")
+      lookup = described_class::Lookup.new(part_store: upload.part_store, source_rows: [ source_row ])
+
+      described_class.new(part_store: upload.part_store, source_row: source_row, lookup: lookup).call
+      concurrent_part = create(:part, datasheet: sheet, fingerprint: source_row.fingerprint, product: "Existing part")
+
+      expect { lookup.flush }.not_to change(Part, :count)
+      expect(Part.for_part_store(upload.part_store_id).find_by!(fingerprint: source_row.fingerprint)).to eq(concurrent_part)
+    end
+
     it "reuses the first candidate that already has a datasheet" do
       part_store = create(:part_store)
       upload = create(:datasheet, part_store: part_store)

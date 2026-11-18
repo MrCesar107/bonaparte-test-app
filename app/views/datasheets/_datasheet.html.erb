@@ -16,7 +16,7 @@
       </div>
     </div>
   <% elsif datasheet.created? %>
-    <div class="group flex min-w-0 flex-col" data-controller="datasheet-card" data-open="false">
+    <div class="group flex min-w-0 flex-col" data-controller="datasheet-card" data-action="tabs:tab-change->datasheet-card#loadSelectedSection" data-open="false">
       <div class="flex min-w-0 flex-row items-center justify-between gap-4 rounded-lg border border-gray-300 p-4 group-data-[open=true]:rounded-b-none">
         <div class="flex min-w-0 flex-col">
           <%= datasheet.name %>
@@ -58,22 +58,22 @@
                 </li>
               </ul>
               <div class="hidden p-4 border-l border-b border-r border-gray-300" data-tabs-target="panel">
-                <%= turbo_frame_tag "source_rows_#{datasheet.id}", src: datasheet_source_rows_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
+                <%= turbo_frame_tag "source_rows_#{datasheet.id}", data: { src: datasheet_source_rows_path(datasheet), datasheet_card_target: "section" }, class: "block w-full min-w-0 overflow-x-auto" %>
               </div>
               <div class="hidden p-4 border-l border-b border-r border-gray-300" data-tabs-target="panel">
-                <%= turbo_frame_tag "metrics_#{datasheet.id}", src: datasheet_metrics_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
+                <%= turbo_frame_tag "metrics_#{datasheet.id}", data: { src: datasheet_metrics_path(datasheet), datasheet_card_target: "section" }, class: "block w-full min-w-0 overflow-x-auto" %>
               </div>
               <div class="hidden p-4 border-l border-b border-r border-gray-300" data-tabs-target="panel">
-                <%= turbo_frame_tag "applications_#{datasheet.id}", src: datasheet_applications_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
+                <%= turbo_frame_tag "applications_#{datasheet.id}", data: { src: datasheet_applications_path(datasheet), datasheet_card_target: "section" }, class: "block w-full min-w-0 overflow-x-auto" %>
               </div>
               <div class="hidden p-4 border-l border-b border-r border-gray-300" data-tabs-target="panel">
-                <%= turbo_frame_tag "interchanges_#{datasheet.id}", src: datasheet_interchanges_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
+                <%= turbo_frame_tag "interchanges_#{datasheet.id}", data: { src: datasheet_interchanges_path(datasheet), datasheet_card_target: "section" }, class: "block w-full min-w-0 overflow-x-auto" %>
               </div>
               <div class="hidden p-4 border-l border-b border-r border-gray-300" data-tabs-target="panel">
-                <%= turbo_frame_tag "attributes_#{datasheet.id}", src: datasheet_attributes_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
+                <%= turbo_frame_tag "attributes_#{datasheet.id}", data: { src: datasheet_attributes_path(datasheet), datasheet_card_target: "section" }, class: "block w-full min-w-0 overflow-x-auto" %>
               </div>
               <div class="hidden p-4 border-l border-b border-r border-gray-300" data-tabs-target="panel">
-                <%= turbo_frame_tag "catalog_rows_#{datasheet.id}", src: datasheet_catalog_rows_path(datasheet), class: "block w-full min-w-0 overflow-x-auto" %>
+                <%= turbo_frame_tag "catalog_rows_#{datasheet.id}", data: { src: datasheet_catalog_rows_path(datasheet), datasheet_card_target: "section" }, class: "block w-full min-w-0 overflow-x-auto" %>
               </div>
             </div>
             <div class="mt-4 flex justify-end">

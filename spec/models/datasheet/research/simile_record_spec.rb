@@ -122,7 +122,7 @@ RSpec.describe Datasheet::Research::SimileRecord do
         part_store: part_store,
         source_row: source_row,
         phrase: phrase_for(source_row),
-        result: hit
+        result: hit.with(lists: read_lists)
       ).call
 
       part = Part.find_by!(part_reference: "RM-152")

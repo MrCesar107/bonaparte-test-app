@@ -68,6 +68,21 @@ RSpec.describe "Datasheet source rows", type: :request do
         expect(response.body.index("FIRST")).to be < response.body.index("SECOND")
       end
 
+      it "does not load any catalog records for the source rows section" do
+        datasheet = create(:datasheet)
+        create(:source_row, datasheet: datasheet)
+        create(:part, datasheet: create(:datasheet, part_store: datasheet.part_store, status: :created))
+        queries = []
+        subscriber = ->(event) { queries << event.payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+          get datasheet_source_rows_path(datasheet)
+        end
+
+        expect(response).to have_http_status(:ok)
+        expect(queries.grep(/FROM "(?:parts|applications|interchanges|attributes)"/)).to be_empty
+      end
+
       it "returns not found when the datasheet does not exist" do
         get datasheet_source_rows_path(0)
 

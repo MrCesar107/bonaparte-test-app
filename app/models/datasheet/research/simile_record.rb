@@ -20,19 +20,37 @@ class Datasheet::Research::SimileRecord
   def call
     return if equivalent.blank?
 
-    sheet = @part_store.datasheets.find_by(equivalent: equivalent)
-    return attach_existing(sheet) if sheet&.created? || sheet&.not_found? || sheet&.failed?
+    if hit? && !@result.lists
+      sheet = @part_store.datasheets.find_by(equivalent: equivalent)
+      return attach_existing(sheet) if finished?(sheet)
+    end
 
     read = lists
     Datasheet.transaction do
-      sheet = @part_store.datasheets.find_or_initialize_by(equivalent: equivalent)
-      sheet.update!(url: url, status: status)
-      replace_lists(sheet, read)
-      attach_new_part(sheet, read)
+      sheet = @part_store.datasheets.create_or_find_by!(equivalent: equivalent) do |record|
+        record.assign_attributes(url: url, status: status)
+      end
+      if sheet.previously_new_record?
+        insert_lists(sheet, read)
+        attach_new_part(sheet, read)
+      elsif finished?(sheet)
+        attach_existing(sheet)
+      else
+        sheet.update!(url: url, status: status)
+        sheet.applications.delete_all
+        sheet.interchanges.delete_all
+        sheet.part_attributes.delete_all
+        insert_lists(sheet, read)
+        attach_new_part(sheet, read)
+      end
     end
   end
 
   private
+
+  def finished?(sheet)
+    sheet&.created? || sheet&.not_found? || sheet&.failed?
+  end
 
   def equivalent
     hit? ? @result.equivalent : @phrase.candidates.first
@@ -97,11 +115,8 @@ class Datasheet::Research::SimileRecord
     )
   end
 
-  def replace_lists(sheet, read)
+  def insert_lists(sheet, read)
     now = Time.current
-    sheet.applications.delete_all
-    sheet.interchanges.delete_all
-    sheet.part_attributes.delete_all
     insert_rows(sheet.applications, read.applications) do |row, index|
       row.to_h.merge(sort_order: index, position: "", datasheet_id: sheet.id, created_at: now, updated_at: now)
     end
@@ -120,13 +135,11 @@ class Datasheet::Research::SimileRecord
   end
 
   def attach_existing(sheet)
-    return if stored_part?
-
     template = sheet.parts.order(:id).first
-    sheet.parts.create!(
+    insert_part(sheet,
       part_reference: @source_row.part_number,
       phrase: @source_row.description,
-      fingerprint: fingerprint,
+      fingerprint: @source_row.fingerprint,
       brand: @source_row.manufacturer,
       item_group: @source_row.item_group,
       category: template&.category || CATEGORY,
@@ -139,12 +152,10 @@ class Datasheet::Research::SimileRecord
   end
 
   def attach_new_part(sheet, read)
-    return if stored_part?
-
-    sheet.parts.create!(
+    insert_part(sheet,
       part_reference: @source_row.part_number,
       phrase: @source_row.description,
-      fingerprint: fingerprint,
+      fingerprint: @source_row.fingerprint,
       brand: @source_row.manufacturer,
       item_group: @source_row.item_group,
       category: CATEGORY,
@@ -156,6 +167,14 @@ class Datasheet::Research::SimileRecord
     )
   end
 
+  def insert_part(sheet, **attributes)
+    row = attributes.merge(datasheet_id: sheet.id, part_store_id: sheet.part_store_id)
+    inserted = Part.insert_fingerprinted([ row ], returning: Part.column_names).first
+    return unless inserted
+
+    Part.instantiate(inserted).tap { |part| part.datasheet = sheet }
+  end
+
   def catalog_subsystem(read)
     catalog_label&.first.presence || read.subsystem
   end
@@ -165,19 +184,11 @@ class Datasheet::Research::SimileRecord
   end
 
   def catalog_label
-    normalized = I18n.transliterate(@source_row.item_group).downcase.squish
+    item_group = @source_row.item_group
+    return if item_group.blank?
+
+    normalized = I18n.transliterate(item_group).downcase.squish
     key = CATALOG_LABELS.keys.select { |candidate| normalized.include?(candidate) }.max_by(&:length)
     CATALOG_LABELS[key]
-  end
-
-  def stored_part?
-    Part.joins(:datasheet).exists?(
-      fingerprint: fingerprint,
-      datasheets: { part_store_id: @part_store.id }
-    )
-  end
-
-  def fingerprint
-    "#{@source_row.part_number} #{@source_row.description}".upcase.squish
   end
 end

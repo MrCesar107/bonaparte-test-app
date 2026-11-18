@@ -1,4 +1,6 @@
 class Datasheet::Research
+  LOOKUP_BATCH_SIZE = 250
+
   def initialize(
     datasheet,
     file,
@@ -41,35 +43,29 @@ class Datasheet::Research
 
   def research_source_rows
     failed = false
+    part_store = @datasheet.part_store
 
-    @datasheet.source_rows.reset.each do |source_row|
-      stored = Datasheet::Research::StoredRow.new(
-        part_store: @datasheet.part_store,
-        source_row: source_row
-      ).call
-      next unless stored == :missing
+    @datasheet.source_rows.reset.to_a.each_slice(LOOKUP_BATCH_SIZE) do |rows|
+      lookup = Datasheet::Research::StoredRow::Lookup.new(part_store: part_store, source_rows: rows)
+      rows.each do |source_row|
+        stored = Datasheet::Research::StoredRow.new(part_store: part_store, source_row: source_row, lookup: lookup).call
+        next unless stored == :missing
 
-      phrase = Datasheet::Research::Phrase.new(
-        description: source_row.description,
-        part_number: source_row.part_number,
-        item_group: source_row.item_group
-      ).call
-      result = Datasheet::Research::PageSearch.new(
-        phrase: phrase,
-        source_row: source_row,
-        item_group: source_row.item_group,
-        search: @search,
-        fetch: @fetch
-      ).call
-      failed = true if result == :failed || result == :out_of_credits
-      break if result == :out_of_credits
+        lookup.flush
+        phrase = lookup.phrase_for(source_row)
+        result = Datasheet::Research::PageSearch.new(
+          phrase: phrase, source_row: source_row, item_group: source_row.item_group,
+          search: @search, fetch: @fetch
+        ).call
+        return true if result == :out_of_credits
 
-      Datasheet::Research::SimileRecord.new(
-        part_store: @datasheet.part_store,
-        source_row: source_row,
-        phrase: phrase,
-        result: result
-      ).call
+        failed = true if result == :failed
+        part = Datasheet::Research::SimileRecord.new(
+          part_store: part_store, source_row: source_row, phrase: phrase, result: result
+        ).call
+        lookup.remember(part) if part
+      end
+      lookup.flush
     end
 
     failed
