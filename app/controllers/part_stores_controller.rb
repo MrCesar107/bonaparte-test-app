@@ -5,9 +5,16 @@ class PartStoresController < ApplicationController
     @part_store = PartStore.new(part_store_params)
 
     if @part_store.save
-      redirect_to @part_store, notice: "Part store created successfully"
+      redirect_to dashboard_index_path, notice: "Part store created successfully", status: :see_other
     else
-      render :new, status: :unprocessable_content
+      respond_to do |format|
+        format.html { render :new, status: :unprocessable_content }
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.update("part_store_form",
+            partial: "part_stores/form", locals: { part_store: @part_store }),
+            status: :unprocessable_content
+        end
+      end
     end
   end
 

@@ -13,7 +13,7 @@ RSpec.describe "Part stores", type: :request do
       expect(response.body).to include('name="part_store[name]"')
       expect(response.body).to include("Enter the part store name")
       expect(response.body).to include("Create Part Store")
-      expect(response.body).not_to include('data-turbo-frame="_top"')
+      expect(response.body).to include('data-turbo-frame="_top"')
     end
   end
 
@@ -31,16 +31,33 @@ RSpec.describe "Part stores", type: :request do
       expect(response.body).to include('name="part_store[name]"')
     end
 
-    it "redirects to the part store when it is created" do
+    it "updates the modal form with validation errors for a Turbo submission" do
       expect {
-        post part_stores_path, params: { part_store: { name: "North Garage" } }
+        post part_stores_path, params: { part_store: { name: "" } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      }.not_to change(PartStore, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+      stream = Nokogiri::HTML(response.body).at_css('turbo-stream[action="update"][target="part_store_form"]')
+      expect(stream).to be_present
+      expect(stream.text).to include("can't be blank")
+      expect(stream.at_css('form[data-turbo-frame="_top"]')).to be_present
+    end
+
+    it "redirects to the store list with a notice when it is created via Turbo" do
+      expect {
+        post part_stores_path, params: { part_store: { name: "North Garage" } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
       }.to change(PartStore, :count).by(1)
 
       part_store = PartStore.find_by!(name: "North Garage")
-      expect(response).to redirect_to(part_store_path(part_store))
+      expect(response).to have_http_status(:see_other)
+      expect(response).to redirect_to(dashboard_index_path)
       follow_redirect!
 
       expect(response.body).to include("North Garage")
+      expect(response.body).to include(%(href="#{part_store_path(part_store)}"))
       expect(response.body).to include("Part store created successfully")
       expect(response.body).to include('data-controller="alert"')
     end
