@@ -2,6 +2,8 @@ require "json"
 require "net/http"
 require "openssl"
 
+# Tracks the SerpApi search balance during a research run so requests stop when credits run out.
+# Account connection or response errors are reported as Unavailable.
 class Datasheet::Research::SerpApiAccount
   ENDPOINT = URI("https://serpapi.com/account.json")
   OPEN_TIMEOUT = 5

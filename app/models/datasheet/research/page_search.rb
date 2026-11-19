@@ -1,3 +1,13 @@
+# This class searches the equivalent part candidates in order
+# and selecting a source with usable fitments by the PageLists class.
+
+# Checks the candidate's identity before accepting details from a result page.
+
+# Tries queries with and without year hints, and retries unavailable searches or downloads.
+
+# Keeps an AI overview only as a fallback while later candidates can still yield a page.
+
+# Returns the selected source or a distinct missing, failed, or exhausted-credit outcome.
 class Datasheet::Research::PageSearch
   ATTEMPTS = 3
   Hit = Data.define(:equivalent, :url, :body, :overview, :lists) do

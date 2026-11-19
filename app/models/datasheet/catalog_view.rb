@@ -1,3 +1,10 @@
+# Builds the catalog sections and metrics from stored source rows and the research.
+
+# Matches input fingerprints to store parts and publishes details only from created datasheets.
+# Preserves Origen order, sorts catalog references, and expands fitment year ranges.
+
+# Both the screen and Excel export use this view, so publication needs no new searches
+# or rereading of the uploaded spreadsheet.
 class Datasheet::CatalogView
   View = Data.define(
     :origin, :catalog, :applications, :interchanges, :attributes, :metrics

@@ -1,3 +1,11 @@
+# It saves an equivalent part's research result and links the store's part to that datasheet.
+
+# Writes the outcome, fitments, interchanges, specifications, and part in one transaction.
+
+# Reuses a completed datasheet when the store has already researched the equivalent.
+
+# Applies the catalog's product labels and preserves missing or failed results so later
+# input rows can recognize research that has already been attempted.
 class Datasheet::Research::SimileRecord
   CATEGORY = "Vehículo ligero"
   VEHICLE_SYSTEM = "MOTOR"

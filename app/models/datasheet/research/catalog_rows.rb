@@ -2,11 +2,22 @@ require "nokogiri"
 require "pdf-reader"
 require "stringio"
 
+# This is a helper class that is used to extract the vehicles
+# compatibility information that comes from the plain catalog texts or PDFs
+# gathered from the previous research steps, but when structured page data
+# is not enough.
+
+# Reads vehicle fitments from catalog text or PDF rows for a candidate part number.
+
+# Looks for rows led by that number and extracts nearby vehicle, year, and engine details.
+
+# Rejects interchange mentions as evidence that a row describes the candidate itself.
+# Also provides visible text and a bounded excerpt around the candidate for AI transcription.
 class Datasheet::Research::CatalogRows
-  PART = /[A-Z0-9][A-Z0-9.\-\/]*\d[A-Z0-9.\-\/]*/i
-  INTERCHANGE = /intercambio|interchange|cross\s*ref|reemplazo|equivalen/i
-  EXCERPT_LIMIT = 12_000
-  EXCERPT_PREFIX = 1_500
+  PART = /[A-Z0-9][A-Z0-9.\-\/]*\d[A-Z0-9.\-\/]*/i # Candidate part number pattern
+  INTERCHANGE = /intercambio|interchange|cross\s*ref|reemplazo|equivalen/i # Interchange mention pattern
+  EXCERPT_LIMIT = 12_000 # Maximum length of the excerpt around the candidate
+  EXCERPT_PREFIX = 1_500 # How much to trim from the start of the excerpt
 
   def initialize(body)
     @body = body.to_s

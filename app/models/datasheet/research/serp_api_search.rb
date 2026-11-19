@@ -2,14 +2,22 @@ require "json"
 require "net/http"
 require "openssl"
 
+
 class Datasheet::Research::OutOfCredits < StandardError; end
 
+# Calls SerpApi for ordered Google results and resolves AI overviews when requested.
+# Normalizes organic links, snippets, overview text, and citations into a Reply.
+
+# Uses SerpApiAccount to track credits and distinguishes empty results from API failures.
+# PageSearch decides which results to inspect and when a request should be retried.
 class Datasheet::Research::SerpApiSearch
   ENDPOINT = URI("https://serpapi.com/search.json")
   OPEN_TIMEOUT = 5
   READ_TIMEOUT = 15
   Result = Data.define(:url, :snippet)
 
+  # Keeps search links together with the overview text, citations, and continuation token.
+  # Behaves as an array of links while exposing whether the overview still needs fetching.
   class Reply < Array
     attr_reader :overview, :references, :page_token
 

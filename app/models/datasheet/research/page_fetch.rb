@@ -3,9 +3,18 @@ require "net/http"
 require "nokogiri"
 require "openssl"
 
+# This class helps to download an HTML or PDF source and extracts the part identity
+# used to check a search hit by the PageSearch class.
+
+# Follows a limited number of redirects and reads product metadata, headings, and references.
+
+# It returns the source body with that identity so PageSearch can decide whether it matches.
+
+# If there's a connection failure or another kind of error, it raises an Unavailable error
+# for the search retry logic. Also it returns a blank page if the download fails.
 class Datasheet::Research::PageFetch
-  OPEN_TIMEOUT = 5
-  READ_TIMEOUT = 15
+  OPEN_TIMEOUT = 5 # Maximum time to wait for the connection to open
+  READ_TIMEOUT = 15 # Maximum time to wait for the response to read
   REDIRECTS = 5
   USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
   PART_NUMBER_LABEL = /

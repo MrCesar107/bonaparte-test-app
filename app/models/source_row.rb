@@ -1,3 +1,6 @@
+# It represents one row from the uploaded Origen sheet.
+# Is is used to store the original position, part number, and description from the input spreadsheet
+# uploaded to build a datasheet.
 class SourceRow < ApplicationRecord
   belongs_to :datasheet
 

@@ -1,3 +1,9 @@
+# Represents an uploaded catalog or a researched equivalent part within a store.
+# An upload holds the original spreadsheet rows; an equivalent's datasheet holds
+# the researched fitments, interchanges, and specifications shared by several parts.
+
+# Its status tracks processing or research outcomes, and only created research
+# contributes details to the published catalog.
 class Datasheet < ApplicationRecord
   belongs_to :part_store
 

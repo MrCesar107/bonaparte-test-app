@@ -1,3 +1,13 @@
+# This class is the responsible for making the whole research process for
+# generating the catalog view from the uploaded input spreadsheet.
+
+# Imports the 'Origen' rows and researches equivalent parts that are not already stored.
+
+# Replaces the upload's source rows, then processes them in batches to reuse stored parts
+# and equivalent datasheets before making external requests.
+
+# Delegates new searches and persistence to the research helpers and records whether
+# processing completed or encountered failures.
 class Datasheet::Research
   LOOKUP_BATCH_SIZE = 250
 

@@ -1,3 +1,13 @@
+# This class turns a source description into candidate part numbers
+# and search queries without network calls.
+
+# Uses the first recognized vehicle brand to separate equivalent numbers from search hints.
+
+# Extracts years, engine details, and oversize values, and maps item groups to fixed English aliases.
+
+# Also compares number spellings so formatting differences do not hide a matching source.
+
+# These hints guide research; vehicle mentions alone do not establish a published fitment.
 class Datasheet::Research::Phrase
   VEHICLE_BRANDS = %w[nissan chevrolet gmc dodge jeep ram chrysler ford gm].freeze
   BRAND_LABELS = {

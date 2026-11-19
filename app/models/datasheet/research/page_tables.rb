@@ -1,6 +1,15 @@
 require "json"
 require "nokogiri"
 
+# This class reads the fitments, interchanges, and specifications
+# from HTML tables or product metadata and converting them into a common set of
+# research row objects.
+
+# Recognizes supplier table headings, schema.org Product data, compatibility descriptions,
+# and Fits clauses, converting them into a common set of research row objects.
+
+# It preserves the extracted values and delegates the catalog's acceptance
+# rules to the PageLists class.
 class Datasheet::Research::PageTables
   SECTIONS = {
     applications: /aplicacion|application/i,

@@ -1,5 +1,6 @@
 require "caxlsx"
 
+# This class writes the six-sheet Excel catalog from the published view, using the required columns.
 class Datasheet::Workbook
   def initialize(datasheet)
     @datasheet = datasheet

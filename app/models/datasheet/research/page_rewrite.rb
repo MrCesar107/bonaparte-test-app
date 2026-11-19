@@ -1,3 +1,13 @@
+# This class uses an AI model to transcribe the source text
+# into the structured catalog details.
+
+# The class is wraped by RubyLLM API to communicate with the AI model and retrieve the response.
+
+# It serves as a fallback when the regular readers cannot extract usable vehicle fitments.
+
+# It requests the PageSchema fields and converts the response into the research row objects.
+
+# It checks the returned evidence before accepting it for the catalog.
 class Datasheet::Research::PageRewrite
   MODEL = "gpt-6.1-sol"
 

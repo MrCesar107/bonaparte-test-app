@@ -1,3 +1,10 @@
+# It reuses a store's saved research for an input row, avoiding duplicate parts and new searches.
+
+# Skips an existing fingerprint or links a new part to the first saved candidate datasheet.
+
+# Copies catalog labels from a saved part, including when the prior research found no result.
+
+# Returns a missing outcome only when the row needs a new external search.
 class Datasheet::Research::StoredRow
   class Lookup
     def initialize(part_store:, source_rows:)

@@ -1,3 +1,12 @@
+# This class extracts and filters the fitments,
+# interchanges, and specifications from a research source and returns the results.
+
+# It tries structured page data, catalog text, and then AI transcription as needed.
+
+# It requires a plausible vehicle and year before accepting related details, and removes
+# duplicate fitments, self-references, and unsupported specifications.
+
+# It completes the accepted results with unambiguous engine and oversize hints from the input phrase.
 class Datasheet::Research::PageLists
   Lists = Data.define(
     :part_number, :subsystem, :product, :description,
