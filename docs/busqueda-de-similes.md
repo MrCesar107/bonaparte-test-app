@@ -40,6 +40,10 @@ Antes de cualquier red se calcula el símil en local. La llave de la ficha es `p
 - La pieza se busca por huella dentro de la refaccionaria: `parts` unido a `datasheets` por `part_store_id`. La huella es la referencia y la frase, en mayúsculas y con los espacios colapsados. Si ya existe, esa fila no se vuelve a escribir.
 - Si la ficha existe y la huella no, se crea la pieza apuntando a esa ficha y no se redactan de nuevo categoría, sistema, producto ni descripción.
 
+`Part.attributes_for_source` concentra esa construcción: conserva referencia, frase, huella, marca y grupo de la fila nueva, y reutiliza el texto comercial y los tokens no confirmados de la pieza plantilla. Sin categoría o sistema guardados usa `Vehículo ligero` y `MOTOR`; sin tokens usa una lista vacía. Tanto `StoredRow` como `SimileRecord` usan la misma política. Los identificadores de ficha y refaccionaria se agregan al insertar, conservando la escritura por lotes y la protección contra huellas duplicadas.
+
+Para una investigación nueva, `Part.attributes_for_research` aplica las etiquetas del grupo sobre las listas extraídas. Estos métodos solo construyen atributos; no consultan servicios externos ni guardan registros.
+
 ## 3. Armar los candidatos
 
 El corte no usa red. La primera marca de vehículo parte la frase. La lista fija, sin distinguir mayúsculas, es Nissan, Chevrolet, GMC, Dodge, Jeep, Ram, Chrysler, Ford y GM. El fabricante de la refacción no corta.
@@ -72,6 +76,21 @@ El código lee las tablas de la página que sirvió: aplicaciones, intercambios 
 Si las tablas solo aportan intercambios o atributos, la lectura continúa con la compatibilidad del `Product` y después con `Fits:` en esa misma página. Se conservan los detalles de las tablas; los intercambios del `Product` se usan solo cuando no hay intercambios de tabla. Una tabla con aplicaciones tiene prioridad sobre esas alternativas. `PageLists` sigue validando las aplicaciones antes de publicar los detalles.
 
 `PageFetch` reutiliza el HTML analizado durante una sola llamada y lo libera al terminar, incluso si la extracción falla. Reutilizar el descargador para varias filas no conserva los documentos analizados de las páginas anteriores.
+
+### Contrato de extracción
+
+`PageLists#call` devuelve un `PageLists::Result` con cuatro campos:
+
+- `lists`: los datos extraídos, filtrados y, si fueron aceptados, completados con las pistas permitidas de la frase.
+- `status`: `accepted` cuando hay aplicaciones publicables, `empty` cuando la fuente no aporta aplicaciones utilizables, o `unavailable` cuando la transcripción no responde. Una extracción no aceptada no publica listas relacionadas.
+- `provenance`: `structured`, `catalog` o `transcription` identifica el método que produjo los datos aceptados; `none` indica que no se aceptó ninguno.
+- `source`: `page` u `overview` identifica la fuente procesada, independientemente del método de lectura; `none` acompaña el resultado no disponible.
+
+El resultado ofrece `accepted?`, `unavailable?` y `transcribed?`. No es necesario consultar banderas mutables del lector después de llamarlo. En las transcripciones, `PageSearch` sigue comprobando que el número devuelto corresponda al candidato. Un overview puede aportar una fila de catálogo sin transcripción, pero conserva `source: :overview` y una URL vacía.
+
+`PageSearch::Hit` transporta el candidato, la URL y la extracción terminada. `SimileRecord` guarda ese resultado sin volver a analizar la página ni llamar al modelo. La búsqueda conserva sus resultados `not_found`, `failed` y `out_of_credits`, y continúa con otra página cuando una extracción no resulta aceptada.
+
+### Formatos de las fuentes
 
 Si no hay tablas, lee el `Product` de schema.org. El hallazgo está en [alcance.md](alcance.md), en «Qué devolvió la búsqueda de FSX-5840301». La consulta `"FSX-5840301" gasket set 1989 2003` aceptó la ficha de iMotriz `FS5840301`. Esa página no trae tablas: el número del cuerpo va enmascarado y las listas están en `script[type="application/ld+json"]`. Se compararon tres fichas de esa plantilla, `FS5840301`, `FS5840300` y `OS5840301`, y el lector sigue lo que las tres comparten:
 

@@ -4,34 +4,20 @@
 
 # Reuses a completed datasheet when the store has already researched the equivalent.
 
-# Applies the catalog's product labels and preserves missing or failed results so later
+# Uses Part's attribute policy and preserves missing or failed results so later
 # input rows can recognize research that has already been attempted.
 class Datasheet::Research::SimileRecord
-  CATEGORY = "Vehículo ligero"
-  VEHICLE_SYSTEM = "MOTOR"
-  CATALOG_LABELS = {
-    "juego de empaque" => [ "JUNTAS Y SISTEMAS DE SELLADO", "JUEGO DE EMPAQUES DE MOTOR" ],
-    "bomba de aceite" => [ "BOMBAS", "BOMBA DE ACEITE DEL MOTOR" ],
-    "kit de distribucion" => [ "COMPONENTES DEL TREN DE VÁLVULAS", "KIT DE CADENA DE TIEMPO" ],
-    "punteria" => [ "COMPONENTES DEL TREN DE VÁLVULAS", "PUNTERÍA HIDRÁULICA" ],
-    "piston" => [ "COMPONENTES DEL BLOQUE DE CILINDROS", "PISTÓN DE MOTOR" ]
-  }.freeze
-
-  def initialize(part_store:, source_row:, phrase:, result:, rewrite: Datasheet::Research::PageRewrite.new)
+  def initialize(part_store:, source_row:, phrase:, result:)
     @part_store = part_store
     @source_row = source_row
     @phrase = phrase
     @result = result
-    @rewrite = rewrite
   end
 
+  # Persists the search's completed extraction without parsing or transcribing again.
+  # Reuses finished research and skips conflicting part fingerprints.
   def call
     return if equivalent.blank?
-
-    if hit? && !@result.lists
-      sheet = @part_store.datasheets.find_by(equivalent: equivalent)
-      return attach_existing(sheet) if finished?(sheet)
-    end
 
     read = lists
     Datasheet.transaction do
@@ -65,13 +51,13 @@ class Datasheet::Research::SimileRecord
   end
 
   def url
-    return @result.url if hit? && !@model_failed
+    return @result.url if hit? && !@result.extraction.unavailable?
 
     ""
   end
 
   def status
-    return :failed if @model_failed
+    return :failed if hit? && @result.extraction.unavailable?
     return :created if publishable?
     return :not_found if @result == :not_found || hit?
 
@@ -79,14 +65,7 @@ class Datasheet::Research::SimileRecord
   end
 
   def publishable?
-    hit? && !@model_failed && lists_from_page?
-  end
-
-  def lists_from_page?
-    read = lists
-    return read.applications.any? if hit? && @result.lists
-
-    @page_lists&.from_page? == true
+    hit? && @result.extraction.accepted?
   end
 
   def hit?
@@ -94,33 +73,7 @@ class Datasheet::Research::SimileRecord
   end
 
   def lists
-    return empty_lists unless hit?
-    return @lists ||= @result.lists if @result.lists
-
-    @page_lists ||= Datasheet::Research::PageLists.new(
-      body: @result.body,
-      overview: @result.overview,
-      phrase: @phrase,
-      source_row: @source_row,
-      rewrite: @rewrite
-    )
-    @lists ||= @page_lists.call
-  rescue Datasheet::Research::Unavailable
-    @model_failed = true
-    @lists = empty_lists
-  end
-
-  def empty_lists
-    Datasheet::Research::PageLists::Lists.new(
-      part_number: "",
-      subsystem: "",
-      product: "",
-      description: "",
-      applications: [],
-      interchanges: [],
-      attributes: [],
-      unconfirmed_tokens: []
-    )
+    hit? ? @result.extraction.lists : Datasheet::Research::PageLists::Lists.empty
   end
 
   def insert_lists(sheet, read)
@@ -144,35 +97,11 @@ class Datasheet::Research::SimileRecord
 
   def attach_existing(sheet)
     template = sheet.parts.order(:id).first
-    insert_part(sheet,
-      part_reference: @source_row.part_number,
-      phrase: @source_row.description,
-      fingerprint: @source_row.fingerprint,
-      brand: @source_row.manufacturer,
-      item_group: @source_row.item_group,
-      category: template&.category || CATEGORY,
-      vehicle_system: template&.vehicle_system || VEHICLE_SYSTEM,
-      subsystem: template&.subsystem,
-      product: template&.product,
-      description: template&.description,
-      unconfirmed_tokens: template&.unconfirmed_tokens || []
-    )
+    insert_part(sheet, **Part.attributes_for_source(source_row: @source_row, template: template))
   end
 
   def attach_new_part(sheet, read)
-    insert_part(sheet,
-      part_reference: @source_row.part_number,
-      phrase: @source_row.description,
-      fingerprint: @source_row.fingerprint,
-      brand: @source_row.manufacturer,
-      item_group: @source_row.item_group,
-      category: CATEGORY,
-      vehicle_system: VEHICLE_SYSTEM,
-      subsystem: catalog_subsystem(read),
-      product: catalog_product(read),
-      description: read.description,
-      unconfirmed_tokens: read.unconfirmed_tokens
-    )
+    insert_part(sheet, **Part.attributes_for_research(source_row: @source_row, lists: read))
   end
 
   def insert_part(sheet, **attributes)
@@ -181,22 +110,5 @@ class Datasheet::Research::SimileRecord
     return unless inserted
 
     Part.instantiate(inserted).tap { |part| part.datasheet = sheet }
-  end
-
-  def catalog_subsystem(read)
-    catalog_label&.first.presence || read.subsystem
-  end
-
-  def catalog_product(read)
-    catalog_label&.last.presence || read.product
-  end
-
-  def catalog_label
-    item_group = @source_row.item_group
-    return if item_group.blank?
-
-    normalized = I18n.transliterate(item_group).downcase.squish
-    key = CATALOG_LABELS.keys.select { |candidate| normalized.include?(candidate) }.max_by(&:length)
-    CATALOG_LABELS[key]
   end
 end

@@ -14,6 +14,7 @@ RSpec.describe Datasheet::Research::PageSearch do
       hit = search_pages(search:, fetch:)
 
       expect(hit).to have_attributes(equivalent: "DM-152", url: match.url)
+      expect(hit.extraction).to have_attributes(status: :accepted, provenance: :structured)
       expect(search).to have_received(:call).with(%("DM-152" Nissan oil pump))
     end
 
@@ -96,6 +97,28 @@ RSpec.describe Datasheet::Research::PageSearch do
       expect(search).to have_received(:call).with(%("DM-152" Nissan oil pump 1976-2014)).once
       expect(search).not_to have_received(:call).with(%("DM-152" Nissan oil pump))
       expect(fetch).to have_received(:call).with("https://parts.test/down").exactly(3).times
+    end
+
+    it "continues to a later page when an earlier page's transcription is unavailable" do
+      unavailable = page(
+        url: "https://parts.test/dm-152-note", part_number: "DM-152",
+        body: "<title>DM-152 Oil Pump</title><p>A note mentions DM-152 for Nissan in 1986.</p>"
+      )
+      match = page(url: "https://parts.test/dm-152", part_number: "DM-152", body: vehicle_page("DM-152"))
+      search = search_returning('"DM-152" Nissan oil pump 1976-2014' => [ unavailable.url, match.url ])
+      rewrite = instance_double(Datasheet::Research::PageRewrite)
+      allow(rewrite).to receive(:call).and_raise(Datasheet::Research::Unavailable)
+
+      hit = described_class.new(
+        phrase: phrase,
+        source_row: build(:source_row, description: "DM-152 NISSAN PICKUP 76/14", part_number: "RM-152"),
+        item_group: "BOMBA DE ACEITE", search: search, fetch: fetch_returning(unavailable, match), rewrite: rewrite
+      ).call
+
+      expect(hit).to have_attributes(equivalent: "DM-152", url: match.url)
+      expect(hit.extraction).to have_attributes(status: :accepted, source: :page)
+      expect(rewrite).to have_received(:call).once
+      expect(search).to have_received(:call).once
     end
 
     it "does not accept a single product page that lacks the interchange" do
@@ -247,7 +270,9 @@ RSpec.describe Datasheet::Research::PageSearch do
         rewrite: rewrite
       ).call
 
-      expect(hit).to have_attributes(equivalent: "83-301", url: "", lists: have_attributes(part_number: "83-301"))
+      expect(hit).to have_attributes(equivalent: "83-301", url: "")
+      expect(hit.extraction).to have_attributes(source: :overview, provenance: :transcription)
+      expect(hit.extraction.lists).to have_attributes(part_number: "83-301")
       expect(search).to have_received(:call).with(sheet.queries["SP26-329R"])
     end
 
@@ -335,7 +360,7 @@ RSpec.describe Datasheet::Research::PageSearch do
       expect(result).to eq(:not_found)
     end
 
-    it "keeps the overview text when no page serves and the text names the candidate" do
+    it "returns accepted overview evidence without a page URL when no page serves" do
       reply = Datasheet::Research::SerpApiSearch::Reply.new([], "DM-152 Nissan pickup desde 1976")
       search = instance_double(Datasheet::Research::SerpApiSearch)
       allow(search).to receive(:call).and_return(reply)
@@ -344,10 +369,9 @@ RSpec.describe Datasheet::Research::PageSearch do
 
       expect(hit).to have_attributes(
         equivalent: "DM-152",
-        url: "",
-        body: "DM-152 Nissan pickup desde 1976",
-        overview: "DM-152 Nissan pickup desde 1976"
+        url: ""
       )
+      expect(hit.extraction).to have_attributes(status: :accepted, provenance: :catalog, source: :overview)
     end
 
     it "accepts a catalog suffix in the title" do

@@ -8,10 +8,32 @@
 
 # It completes the accepted results with unambiguous engine and oversize hints from the input phrase.
 class Datasheet::Research::PageLists
+  # Carries accepted/empty/unavailable status, source, and extraction method with its lists.
+  # Callers can inspect a completed outcome without querying mutable reader state.
+  Result = Data.define(:lists, :status, :provenance, :source) do
+    def accepted?
+      status == :accepted
+    end
+
+    def unavailable?
+      status == :unavailable
+    end
+
+    def transcribed?
+      provenance == :transcription
+    end
+  end
+
+  # Common research details shared by structured readers and AI transcription.
   Lists = Data.define(
     :part_number, :subsystem, :product, :description,
     :applications, :interchanges, :attributes, :unconfirmed_tokens
   ) do
+    def self.empty
+      new(part_number: "", subsystem: "", product: "", description: "",
+        applications: [], interchanges: [], attributes: [], unconfirmed_tokens: [])
+    end
+
     def any?
       applications.any? || interchanges.any? || attributes.any? { |row| row.name.present? || row.value.present? }
     end
@@ -44,39 +66,55 @@ class Datasheet::Research::PageLists
     son\s+ejemplos
   /ix
 
-  def initialize(body:, phrase:, source_row:, overview: "", rewrite: Datasheet::Research::PageRewrite.new)
+  def initialize(body:, phrase:, source_row:, overview: "", source: :page, rewrite: Datasheet::Research::PageRewrite.new)
     @body = body.to_s
     @overview = overview.to_s
+    @source = source
     @phrase = phrase
     @source_row = source_row
     @rewrite = rewrite
-    @model_texts = []
   end
 
+  # Returns an extraction outcome; unavailable transcription is distinct from empty evidence.
+  # Only accepted results include publishable details and phrase-based enrichment.
+  # Source labels the supplied body as page or overview; a separate overview is a
+  # transcription fallback only after the body's regular readers and transcription miss.
   def call
-    read = read_lists
-    @from_page = read.applications.any?
-    read = publish(read) if @from_page
-    read = without_lists(read) unless @from_page
-    read.with(unconfirmed_tokens: unconfirmed_tokens(read))
-  end
-
-  def from_page?
-    @from_page == true
-  end
-
-  def from_model?
-    @from_model == true
+    @model_texts = []
+    result = read_lists
+    read = result.accepted? ? publish(result.lists) : without_lists(result.lists)
+    result.with(lists: read.with(unconfirmed_tokens: unconfirmed_tokens(read)))
+  rescue Datasheet::Research::Unavailable
+    Result.new(lists: Lists.empty, status: :unavailable, provenance: :none, source: :none)
   end
 
   private
 
   def read_lists
-    read = accepted_rows(Datasheet::Research::PageTables.new(@body).call)
-    read = add_catalog(read) unless read.applications.any?
-    read = add_model(read, @body) unless read.applications.any?
-    read = add_model(read, @overview) unless read.applications.any?
-    read
+    result = read_source(@body, @source)
+    return result if result.accepted? || @overview.blank?
+
+    read = add_model(Lists.empty, @overview)
+    return accepted(read, :transcription, :overview) if read.applications.any?
+
+    Result.new(lists: read, status: :empty, provenance: :none, source: :overview)
+  end
+
+  def read_source(body, source)
+    read = accepted_rows(Datasheet::Research::PageTables.new(body).call)
+    return accepted(read, :structured, source) if read.applications.any?
+
+    read = add_catalog(read, body)
+    return accepted(read, :catalog, source) if read.applications.any?
+
+    read = add_model(read, body)
+    return accepted(read, :transcription, source) if read.applications.any?
+
+    Result.new(lists: read, status: :empty, provenance: :none, source: source)
+  end
+
+  def accepted(lists, provenance, source)
+    Result.new(lists: lists, status: :accepted, provenance: provenance, source: source)
   end
 
   def accepted_rows(lists)
@@ -94,8 +132,8 @@ class Datasheet::Research::PageLists
     add_oversize(complete_engine(add_phrase_interchanges(lists)))
   end
 
-  def add_catalog(lists)
-    catalog = Datasheet::Research::CatalogRows.new(@body)
+  def add_catalog(lists, body)
+    catalog = Datasheet::Research::CatalogRows.new(body)
     candidate = @phrase.candidates.find { |item| catalog.confirms?(item) }
     return lists if candidate.nil?
 
@@ -118,7 +156,6 @@ class Datasheet::Research::PageLists
     rewritten = usable(@rewrite.call(plain))
     return lists unless rewritten.any?
 
-    @from_model = true
     lists.with(
       part_number: lists.part_number.presence || rewritten.part_number,
       subsystem: rewritten.subsystem.presence || lists.subsystem,

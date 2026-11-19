@@ -10,11 +10,8 @@
 # Returns the selected source or a distinct missing, failed, or exhausted-credit outcome.
 class Datasheet::Research::PageSearch
   ATTEMPTS = 3
-  Hit = Data.define(:equivalent, :url, :body, :overview, :lists) do
-    def initialize(equivalent:, url:, body:, overview: "", lists: nil)
-      super(equivalent:, url:, body:, overview:, lists:)
-    end
-  end
+  # Selected source identity and its completed extraction, ready for persistence.
+  Hit = Data.define(:equivalent, :url, :extraction)
   Page = Data.define(:url, :part_number, :product_count, :group, :interchange_numbers, :body)
   Lead = Data.define(:url, :snippet)
 
@@ -182,7 +179,7 @@ class Datasheet::Research::PageSearch
     pages.each do |page, snippet|
       next unless accepts?(page, snippet, candidate)
 
-      found = with_lists(hit(candidate, page))
+      found = extract_hit(candidate, url: page.url, body: page.body)
       return found if found
     end
 
@@ -221,26 +218,21 @@ class Datasheet::Research::PageSearch
     text = @overview.to_s
     return if text.blank? || !mentions?(text, candidate)
 
-    with_lists(Hit.new(equivalent: candidate, url: "", body: text, overview: text))
+    extract_hit(candidate, url: "", body: text, source: :overview)
   end
 
-  def with_lists(found)
-    return if found.nil?
-
-    reader = Datasheet::Research::PageLists.new(
-      body: found.body,
-      overview: found.overview,
+  def extract_hit(candidate, url:, body:, source: :page)
+    extraction = Datasheet::Research::PageLists.new(
+      body: body,
+      source: source,
       phrase: @phrase,
       source_row: @source_row,
       rewrite: @rewrite
-    )
-    lists = reader.call
-    return unless reader.from_page?
-    return unless number_confirmed?(found, reader, lists)
+    ).call
+    return unless extraction.accepted?
+    return unless number_confirmed?(candidate, extraction)
 
-    found.with(lists: lists)
-  rescue Datasheet::Research::Unavailable
-    nil
+    Hit.new(equivalent: candidate, url: url, extraction: extraction)
   end
 
   def same_sheet_number?(page, candidate)
@@ -262,15 +254,9 @@ class Datasheet::Research::PageSearch
     [ title, heading ].compact.join(" ")
   end
 
-  def number_confirmed?(found, reader, lists)
-    return true unless reader.from_model?
+  def number_confirmed?(candidate, extraction)
+    return true unless extraction.transcribed?
 
-    Datasheet::Research::Phrase.same_number?(lists.part_number, found.equivalent)
-  end
-
-  def hit(candidate, page)
-    return if page.nil?
-
-    Hit.new(equivalent: candidate, url: page.url, body: page.body)
+    Datasheet::Research::Phrase.same_number?(extraction.lists.part_number, candidate)
   end
 end

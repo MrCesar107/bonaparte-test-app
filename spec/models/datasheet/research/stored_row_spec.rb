@@ -50,7 +50,9 @@ RSpec.describe Datasheet::Research::StoredRow do
       )
 
       expect(described_class.new(part_store: part_store, source_row: source_row).call).to eq(:attached)
-      expect(Part.find_by(part_reference: "RM-152").datasheet).to eq(first)
+      part = Part.find_by!(part_reference: "RM-152")
+      expect(part.datasheet).to eq(first)
+      expect(part).to have_attributes(category: "Vehículo ligero", vehicle_system: "MOTOR", unconfirmed_tokens: [])
     end
 
     it "does not reuse a datasheet from another part store" do
@@ -97,7 +99,8 @@ RSpec.describe Datasheet::Research::StoredRow do
         vehicle_system: "Motor",
         subsystem: "Bombas",
         product: "Bomba de aceite",
-        description: "Párrafo ya escrito"
+        description: "Párrafo ya escrito",
+        unconfirmed_tokens: [ "UNKNOWN-1" ]
       )
       source_row = create(
         :source_row,
@@ -119,7 +122,8 @@ RSpec.describe Datasheet::Research::StoredRow do
         vehicle_system: "Motor",
         subsystem: "Bombas",
         product: "Bomba de aceite",
-        description: "Párrafo ya escrito"
+        description: "Párrafo ya escrito",
+        unconfirmed_tokens: [ "UNKNOWN-1" ]
       )
     end
 

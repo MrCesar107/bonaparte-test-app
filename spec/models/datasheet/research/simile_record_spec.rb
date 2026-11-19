@@ -35,13 +35,12 @@ RSpec.describe Datasheet::Research::SimileRecord do
     it "uses the lists the search already read" do
       part_store = create(:part_store)
       source_row = source_row_for(part_store)
-      rewrite = empty_rewrite
+      allow(Datasheet::Research::PageLists).to receive(:new).and_call_original
       ready = described_class.new(
         part_store: part_store,
         source_row: source_row,
         phrase: phrase_for(source_row),
-        result: hit.with(lists: read_lists),
-        rewrite: rewrite
+        result: hit(extraction: accepted(read_lists))
       )
 
       ready.call
@@ -50,7 +49,7 @@ RSpec.describe Datasheet::Research::SimileRecord do
 
       expect(sheet).to have_attributes(url: "https://parts.test/dm-152", status: "created")
       expect(sheet.applications.map(&:model)).to eq([ "Pickup" ])
-      expect(rewrite).not_to have_received(:call)
+      expect(Datasheet::Research::PageLists).not_to have_received(:new)
     end
 
     it "does not publish a page that has no lists" do
@@ -61,8 +60,7 @@ RSpec.describe Datasheet::Research::SimileRecord do
         part_store: part_store,
         source_row: source_row,
         phrase: phrase_for(source_row),
-        result: hit("<title>DM-152 Oil Pump</title><p>sin tablas</p>"),
-        rewrite: empty_rewrite
+        result: hit("<title>DM-152 Oil Pump</title><p>sin tablas</p>")
       ).call
 
       sheet = part_store.datasheets.find_by!(equivalent: "DM-152")
@@ -91,18 +89,18 @@ RSpec.describe Datasheet::Research::SimileRecord do
       expect(sheet.parts.find_by(part_reference: "RM-152")).to be_present
     end
 
-    it "stores a failed sheet when the model does not respond" do
+    it "stores a failed sheet when extraction is unavailable" do
       part_store = create(:part_store)
       source_row = source_row_for(part_store)
-      page_lists = instance_double(Datasheet::Research::PageLists)
-      allow(Datasheet::Research::PageLists).to receive(:new).and_return(page_lists)
-      allow(page_lists).to receive(:call).and_raise(Datasheet::Research::Unavailable)
+      extraction = Datasheet::Research::PageLists::Result.new(
+        lists: Datasheet::Research::PageLists::Lists.empty, status: :unavailable, provenance: :none, source: :none
+      )
 
       described_class.new(
         part_store: part_store,
         source_row: source_row,
         phrase: phrase_for(source_row),
-        result: hit("<p>sin tablas</p>")
+        result: hit(extraction: extraction)
       ).call
 
       sheet = part_store.datasheets.find_by!(equivalent: "DM-152")
@@ -115,14 +113,14 @@ RSpec.describe Datasheet::Research::SimileRecord do
     it "attaches a new fingerprint to the saved sheet without rewriting it" do
       part_store = create(:part_store)
       sheet = create(:datasheet, part_store: part_store, equivalent: "DM-152", status: :created, url: "https://parts.test/old")
-      create(:part, datasheet: sheet, part_reference: "OLD-1", phrase: "otra frase", product: "Bomba de aceite", description: "Ya escrito")
+      create(:part, datasheet: sheet, part_reference: "OLD-1", phrase: "otra frase", product: "Bomba de aceite", description: "Ya escrito", unconfirmed_tokens: [ "UNKNOWN-1" ])
       source_row = source_row_for(part_store)
 
       described_class.new(
         part_store: part_store,
         source_row: source_row,
         phrase: phrase_for(source_row),
-        result: hit.with(lists: read_lists)
+        result: hit(extraction: accepted(read_lists))
       ).call
 
       part = Part.find_by!(part_reference: "RM-152")
@@ -132,6 +130,7 @@ RSpec.describe Datasheet::Research::SimileRecord do
       expect(part.datasheet).to eq(sheet)
       expect(part.product).to eq("Bomba de aceite")
       expect(part.description).to eq("Ya escrito")
+      expect(part).to have_attributes(category: "Vehículo ligero", vehicle_system: "MOTOR", unconfirmed_tokens: [ "UNKNOWN-1" ])
     end
   end
 
@@ -155,13 +154,20 @@ RSpec.describe Datasheet::Research::SimileRecord do
     ).call
   end
 
-  def hit(body = page_html)
+  def hit(body = page_html, extraction: nil)
+    row = build(:source_row, part_number: "RM-152", description: "DM-152 QJC20G NISSAN PICKUP 76/14")
+    extraction ||= Datasheet::Research::PageLists.new(
+      body: body, source_row: row, phrase: phrase_for(row), rewrite: empty_rewrite
+    ).call
     Datasheet::Research::PageSearch::Hit.new(
       equivalent: "DM-152",
       url: "https://parts.test/dm-152",
-      body: body,
-      overview: ""
+      extraction: extraction
     )
+  end
+
+  def accepted(lists)
+    Datasheet::Research::PageLists::Result.new(lists: lists, status: :accepted, provenance: :structured, source: :page)
   end
 
   def read_lists

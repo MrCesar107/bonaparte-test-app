@@ -1,6 +1,72 @@
 require "rails_helper"
 
 RSpec.describe Datasheet::Research::PageLists do
+  describe "extraction outcomes" do
+    it "returns accepted structured data with its provenance" do
+      result = described_class.new(
+        body: application_table,
+        phrase: phrase("DM-152 CHEVROLET SILVERADO 14/18"),
+        source_row: build(:source_row, part_number: "RM-152"),
+        rewrite: unused_rewrite
+      ).call
+
+      expect(result).to have_attributes(status: :accepted, provenance: :structured, source: :page)
+      expect(result).to be_accepted
+      expect(result).not_to be_transcribed
+    end
+
+    it "distinguishes a catalog row from a transcription" do
+      result = described_class.new(
+        body: "<p>FS-001225 NISSAN PICKUP 1989-2003</p>",
+        phrase: phrase("FS-001225 NISSAN PICKUP 89/03", "FSX-5840301", "JUEGO DE EMPAQUES"),
+        source_row: build(:source_row, description: "FS-001225 NISSAN PICKUP 89/03"),
+        rewrite: unused_rewrite
+      ).call
+
+      expect(result).to have_attributes(status: :accepted, provenance: :catalog)
+      expect(result).not_to be_transcribed
+    end
+
+    it "identifies accepted overview transcription separately from page data" do
+      overview = "HL7011 Chevrolet AFM desde 2007"
+      rewrite = double("rewrite", call: model_lists)
+      result = described_class.new(
+        body: "<p>No fitments here</p>", overview: overview,
+        phrase: phrase("HL7011 CHEVROLET 99/23", "HL-7025S", "PUNTERIAS"),
+        source_row: build(:source_row, description: "HL7011 CHEVROLET 99/23"),
+        rewrite: rewrite
+      ).call
+
+      expect(result).to have_attributes(status: :accepted, provenance: :transcription, source: :overview)
+      expect(result).to be_transcribed
+    end
+
+    it "returns an empty outcome when the source has no usable fitment" do
+      result = described_class.new(
+        body: "<p>No fitments here</p>",
+        phrase: phrase("DM-152 NISSAN PICKUP 76/14"),
+        source_row: build(:source_row), rewrite: unused_rewrite
+      ).call
+
+      expect(result).to have_attributes(status: :empty, provenance: :none)
+      expect(result).not_to be_accepted
+    end
+
+    it "returns unavailable when transcription fails instead of reporting an empty source" do
+      rewrite = double("rewrite")
+      allow(rewrite).to receive(:call).and_raise(Datasheet::Research::Unavailable)
+      result = described_class.new(
+        body: "<p>HL7011 appears here Chevrolet 2007</p>",
+        phrase: phrase("HL7011 CHEVROLET 99/23", "HL-7025S", "PUNTERIAS"),
+        source_row: build(:source_row), rewrite: rewrite
+      ).call
+
+      expect(result).to have_attributes(status: :unavailable, provenance: :none)
+      expect(result).to be_unavailable
+      expect(result.lists.applications).to be_empty
+    end
+  end
+
   describe "#call" do
     it "keeps the table lists and does not call the model" do
       rewrite = double("rewrite")
@@ -11,7 +77,7 @@ RSpec.describe Datasheet::Research::PageLists do
         phrase: phrase("DM-152 QJC20G NISSAN PICKUP 76/14", "DM-152"),
         source_row: build(:source_row, description: "DM-152 QJC20G NISSAN PICKUP 76/14", part_number: "DM-152"),
         rewrite: rewrite
-      ).call
+      ).call.lists
 
       expect(lists.applications.map(&:model)).to eq([ "D21" ])
       expect(lists.interchanges.map(&:number)).to eq([ "QJC20G" ])
@@ -38,7 +104,10 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.applications.map(&:model)).to eq([ "LS" ])
+      result = reader.call
+
+      expect(result.lists.applications.map(&:model)).to eq([ "LS" ])
+      expect(result).to have_attributes(status: :accepted, provenance: :transcription, source: :page)
       expect(rewrite).to have_received(:call).with(shown(body))
     end
 
@@ -52,7 +121,7 @@ RSpec.describe Datasheet::Research::PageLists do
         phrase: phrase("DM-152 QJC20G NISSAN PICKUP 1.8 76/14"),
         source_row: build(:source_row, description: "DM-152 QJC20G NISSAN PICKUP 1.8 76/14"),
         rewrite: rewrite
-      ).call
+      ).call.lists
 
       expect(rewrite).not_to have_received(:call)
       expect(lists.applications).to be_empty
@@ -71,10 +140,12 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.applications.first).to have_attributes(
+      result = reader.call
+
+      expect(result.lists.applications.first).to have_attributes(
         manufacturer: "Chevrolet", model: "LS", start_year: "2007"
       )
-      expect(reader).to be_from_page
+      expect(result).to be_accepted
     end
 
     it "drops a transcription whose model is not a vehicle" do
@@ -89,8 +160,10 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.applications).to be_empty
-      expect(reader).not_to be_from_page
+      result = reader.call
+
+      expect(result.lists.applications).to be_empty
+      expect(result).not_to be_accepted
     end
 
     it "keeps a vehicle range and drops a question attribute" do
@@ -104,13 +177,14 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      lists = reader.call
+      result = reader.call
+      lists = result.lists
 
       expect(lists.applications.map(&:model)).to eq([ "Silverado 1500" ])
       expect(lists.applications.first).to have_attributes(start_year: "2014", end_year: "2018")
       expect(lists.attributes.map(&:name)).to eq([ "Ranura" ])
       expect(lists.interchanges.map(&:number)).to eq([ "DM-152" ])
-      expect(reader).to be_from_page
+      expect(result).to be_accepted
     end
 
     it "does not ask the model when the text has no vehicle year" do
@@ -124,7 +198,9 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.applications).to be_empty
+      result = reader.call
+
+      expect(result.lists.applications).to be_empty
       expect(rewrite).not_to have_received(:call)
     end
 
@@ -167,7 +243,9 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.applications.map(&:model)).to eq([ "Silverado 1500" ])
+      result = reader.call
+
+      expect(result.lists.applications.map(&:model)).to eq([ "Silverado 1500" ])
       expect(rewrite).not_to have_received(:call).with(overview)
     end
 
@@ -182,8 +260,10 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.applications).to be_empty
-      expect(reader).not_to be_from_page
+      result = reader.call
+
+      expect(result.lists.applications).to be_empty
+      expect(result).not_to be_accepted
       expect(rewrite).not_to have_received(:call)
     end
 
@@ -203,12 +283,13 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      lists = reader.call
+      result = reader.call
+      lists = result.lists
 
       expect(lists.applications).to be_empty
       expect(lists.interchanges).to be_empty
       expect(lists.attributes).to be_empty
-      expect(reader).not_to be_from_page
+      expect(result).not_to be_accepted
     end
 
     it "drops a transcription that says the part number does not match" do
@@ -231,12 +312,13 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      lists = reader.call
+      result = reader.call
+      lists = result.lists
 
       expect(lists.applications).to be_empty
       expect(lists.interchanges).to be_empty
       expect(lists.attributes).to be_empty
-      expect(reader).not_to be_from_page
+      expect(result).not_to be_accepted
     end
 
     it "keeps a piston list that only disclaims other part numbers" do
@@ -260,11 +342,12 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      lists = reader.call
+      result = reader.call
+      lists = result.lists
 
       expect(lists.applications.map(&:model)).to eq([ "Silverado 1500" ])
       expect(lists.attributes.map(&:value)).to eq([ "99.60" ])
-      expect(reader).to be_from_page
+      expect(result).to be_accepted
     end
 
     it "drops an interchange that repeats the searched number" do
@@ -289,7 +372,9 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.interchanges.map(&:number)).to eq([ "FGS6007" ])
+      result = reader.call
+
+      expect(result.lists.interchanges.map(&:number)).to eq([ "FGS6007" ])
     end
 
     it "drops a model that is a sentence fragment" do
@@ -310,8 +395,10 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.applications).to be_empty
-      expect(reader).not_to be_from_page
+      result = reader.call
+
+      expect(result.lists.applications).to be_empty
+      expect(result).not_to be_accepted
     end
 
     it "keeps a vehicle name with a number or an ampersand" do
@@ -333,7 +420,9 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.applications.map(&:model)).to eq([ "Town & Country" ])
+      result = reader.call
+
+      expect(result.lists.applications.map(&:model)).to eq([ "Town & Country" ])
     end
 
     it "drops an approximate measurement and a part number used as its class" do
@@ -354,8 +443,10 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      expect(reader.call.attributes.map(&:name)).to eq([ "Ranura" ])
-      expect(reader).to be_from_page
+      result = reader.call
+
+      expect(result.lists.attributes.map(&:name)).to eq([ "Ranura" ])
+      expect(result).to be_accepted
     end
 
     it "does not publish interchanges when there is no vehicle application" do
@@ -374,12 +465,13 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      lists = reader.call
+      result = reader.call
+      lists = result.lists
 
       expect(lists.applications).to be_empty
       expect(lists.interchanges).to be_empty
       expect(lists.attributes).to be_empty
-      expect(reader).not_to be_from_page
+      expect(result).not_to be_accepted
     end
 
     it "reads a catalog row when the page has no tables" do
@@ -390,13 +482,15 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: unused_rewrite
       )
 
-      expect(reader.call.applications.first).to have_attributes(
+      result = reader.call
+
+      expect(result.lists.applications.first).to have_attributes(
         manufacturer: "Nissan",
         model: "Pickup",
         start_year: "1989",
         end_year: "2003"
       )
-      expect(reader).to be_from_page
+      expect(result).to be_accepted
     end
 
     it "fills a blank engine from the phrase and keeps a measurement the page already gave" do
@@ -418,7 +512,8 @@ RSpec.describe Datasheet::Research::PageLists do
         rewrite: rewrite
       )
 
-      lists = reader.call
+      result = reader.call
+      lists = result.lists
 
       expect(lists.applications.map { |row| [ row.liters, row.engine_cid, row.engine_cylinders, row.block ] }).to eq([
         [ "4.3", "262", "6", "V" ],
@@ -433,13 +528,13 @@ RSpec.describe Datasheet::Research::PageLists do
         phrase: phrase("SP26-329R/L+20 CHEVROLET SILVERADO", "SP26-329R/L+20", "PISTON"),
         source_row: build(:source_row, description: "SP26-329R/L+20 CHEVROLET SILVERADO"),
         rewrite: unused_rewrite
-      ).call
+      ).call.lists
       missing = described_class.new(
         body: application_table,
         phrase: phrase("SP26-329R/L+20 CHEVROLET SILVERADO", "SP26-329R/L+20", "PISTON"),
         source_row: build(:source_row, description: "SP26-329R/L+20 CHEVROLET SILVERADO"),
         rewrite: unused_rewrite
-      ).call
+      ).call.lists
 
       expect(listed.attributes.map(&:value)).to eq([ "+20" ])
       expect(missing.attributes.map(&:value)).to eq([ "+20" ])

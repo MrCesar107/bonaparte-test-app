@@ -6,6 +6,7 @@
 
 # Returns a missing outcome only when the row needs a new external search.
 class Datasheet::Research::StoredRow
+  # Batches store-scoped reuse lookups and stages inserts without repeating row queries.
   class Lookup
     def initialize(part_store:, source_rows:)
       fingerprints = source_rows.map(&:fingerprint).uniq
@@ -77,28 +78,10 @@ class Datasheet::Research::StoredRow
     sheet = @lookup.sheet_for(@source_row)
     return :missing unless sheet
 
-    @lookup.stage_part(sheet, part_attributes(sheet))
+    attributes = Part.attributes_for_source(source_row: @source_row, template: @lookup.template_for(sheet))
+    @lookup.stage_part(sheet, attributes)
     return :attached if @batched
 
     @lookup.flush(returning: [ :id ]).rows.any? ? :attached : :skipped
-  end
-
-  private
-
-  def part_attributes(sheet)
-    template = @lookup.template_for(sheet)
-
-    {
-      part_reference: @source_row.part_number,
-      phrase: @source_row.description,
-      fingerprint: @source_row.fingerprint,
-      brand: @source_row.manufacturer,
-      item_group: @source_row.item_group,
-      category: template&.category,
-      vehicle_system: template&.vehicle_system,
-      subsystem: template&.subsystem,
-      product: template&.product,
-      description: template&.description
-    }
   end
 end
