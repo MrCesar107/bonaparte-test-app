@@ -26,10 +26,12 @@ class Datasheet::Research::PageTables
     @body = body
   end
 
+  # Prefers table fitments, then Product compatibility, then Fits text on this page.
+  # Other table details remain available while missing fitments are extracted.
   def call
     lists = table_lists
     lists = schema_lists(lists) if product_node
-    return lists if lists.applications.any? || lists.interchanges.any? || lists.attributes.any?
+    return lists if lists.applications.any?
 
     rows = fits_rows
     return lists if rows.empty?
@@ -90,11 +92,11 @@ class Datasheet::Research::PageTables
       part_number: lists.part_number.presence || product_node["sku"].presence || product_node["mpn"].to_s,
       product: lists.product.presence || product_node["name"].to_s.squish
     )
-    return lists if lists.applications.any? || lists.interchanges.any? || lists.attributes.any?
+    return lists if lists.applications.any?
 
     lists.with(
       applications: compatibility_rows(product_node["description"]),
-      interchanges: product_interchanges(product_node)
+      interchanges: lists.interchanges.presence || product_interchanges(product_node)
     )
   end
 

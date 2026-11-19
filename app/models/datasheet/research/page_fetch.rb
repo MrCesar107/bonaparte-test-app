@@ -24,6 +24,8 @@ class Datasheet::Research::PageFetch
   /ix
   INTERCHANGE_HEADING = /intercambio|interchange|cross\s*ref|reemplazo|equivalen/i
 
+  # Returns source content and identity metadata, or an empty page for an unusable response.
+  # Parsed HTML is reused only during this call and released even if extraction fails.
   def call(url)
     body, final_url = download(url)
     return blank_page(final_url) if body.blank?
@@ -31,6 +33,8 @@ class Datasheet::Research::PageFetch
     page_from(final_url, body)
   rescue SocketError, Timeout::Error, SystemCallError, OpenSSL::SSL::SSLError, EOFError
     raise Datasheet::Research::Unavailable
+  ensure
+    @document = nil
   end
 
   private
@@ -189,9 +193,7 @@ class Datasheet::Research::PageFetch
   end
 
   def document(body)
-    @documents ||= {}
-    @documents[body] = Nokogiri::HTML(body) unless @documents.key?(body)
-    @documents[body]
+    @document ||= Nokogiri::HTML(body)
   end
 
   def page_body(body)

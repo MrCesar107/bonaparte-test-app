@@ -1,5 +1,6 @@
 require "rails_helper"
 require "net/http"
+require "weakref"
 
 RSpec.describe Datasheet::Research::PageFetch do
   describe "#call" do
@@ -99,6 +100,31 @@ RSpec.describe Datasheet::Research::PageFetch do
       allow(http).to receive(:request).and_raise(SocketError)
 
       expect { described_class.new.call("https://parts.test/down") }.to raise_error(Datasheet::Research::Unavailable)
+    end
+
+    it "releases parsed HTML after each call while reusing the fetcher for different pages" do
+      documents = []
+      allow(Nokogiri).to receive(:HTML).and_wrap_original do |parse, *args|
+        document = parse.call(*args)
+        documents << WeakRef.new(document)
+        document
+      end
+      responses = %w[DM-152 M200].map do |number|
+        success_response("<h1>#{number} Oil Pump</h1>")
+      end
+      http = stub_http(responses.first)
+      allow(http).to receive(:request).and_return(*responses)
+      fetcher = described_class.new
+
+      %w[DM-152 M200].each do |number|
+        page = fetcher.call("https://parts.test/#{number}")
+
+        expect(page).to have_attributes(part_number: number, group: "#{number} Oil Pump")
+        # Weak references observe retention without depending on cache variable names.
+        GC.start
+        expect(documents).not_to be_empty
+        expect(documents.none?(&:weakref_alive?)).to be(true)
+      end
     end
   end
 

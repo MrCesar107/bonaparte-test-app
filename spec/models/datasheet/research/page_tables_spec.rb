@@ -113,6 +113,42 @@ RSpec.describe Datasheet::Research::PageTables do
       ])
     end
 
+    it "reads Fits applications when only interchanges and attributes have tables" do
+      html = detail_tables_html + "<p>Fits: 1990-1994 Nissan Pickup.</p>"
+
+      lists = described_class.new(html).call
+
+      expect(lists.applications).to contain_exactly(have_attributes(
+        manufacturer: "Nissan", model: "Pickup", start_year: "1990", end_year: "1994"
+      ))
+      expect(lists.interchanges).to contain_exactly(have_attributes(number: "DM-152", brand: "Melling"))
+      expect(lists.attributes).to contain_exactly(have_attributes(name: "Altura", unit: "mm", value: "10"))
+    end
+
+    it "reads product compatibility without replacing existing table details" do
+      html = detail_tables_html + product_html(
+        "Aplicación y Compatibilidad: Nissan: D21 (1986-1994).",
+        alternate_name: [ "OTHER-1" ]
+      )
+
+      lists = described_class.new(html).call
+
+      expect(lists.applications).to contain_exactly(have_attributes(
+        manufacturer: "Nissan", model: "D21", start_year: "1986", end_year: "1994"
+      ))
+      expect(lists.interchanges).to contain_exactly(have_attributes(number: "DM-152", brand: "Melling"))
+      expect(lists.attributes).to contain_exactly(have_attributes(name: "Altura", value: "10"))
+    end
+
+    it "keeps table fitments ahead of product compatibility and Fits sentences" do
+      html = page_html + product_html("Aplicación y Compatibilidad: Nissan: Vanette (1993-1995).") +
+        "<p>Fits: 1990-1994 Nissan Pickup.</p>"
+
+      lists = described_class.new(html).call
+
+      expect(lists.applications.map(&:model)).to eq([ "D21", "Motores LS con AFM" ])
+    end
+
     it "returns empty lists when the page has no matching tables" do
       lists = described_class.new("<p>sin tablas</p>").call
 
@@ -141,6 +177,21 @@ RSpec.describe Datasheet::Research::PageTables do
       sku: "FS5840301",
       alternate_name: [ "1010140F26", "1010140F87", "50241400", "FS5840301" ]
     )
+  end
+
+  def detail_tables_html
+    <<~HTML
+      <h2>Intercambios</h2>
+      <table>
+        <tr><th>Número</th><th>Marca</th></tr>
+        <tr><td>DM-152</td><td>Melling</td></tr>
+      </table>
+      <h2>Atributos</h2>
+      <table>
+        <tr><th>Clase</th><th>Atributo</th><th>Unidad</th><th>Valor</th></tr>
+        <tr><td>Altura</td><td>Altura</td><td>mm</td><td>10</td></tr>
+      </table>
+    HTML
   end
 
   def product_html(description, name: "Empaque", sku: "OS5840301", alternate_name: [ sku ])

@@ -69,6 +69,10 @@ Una página sirve cuando el candidato, ya comparado así, está en el título, e
 
 El código lee las tablas de la página que sirvió: aplicaciones, intercambios y atributos, en el orden de la página. Ese orden se guarda en `sort_order`.
 
+Si las tablas solo aportan intercambios o atributos, la lectura continúa con la compatibilidad del `Product` y después con `Fits:` en esa misma página. Se conservan los detalles de las tablas; los intercambios del `Product` se usan solo cuando no hay intercambios de tabla. Una tabla con aplicaciones tiene prioridad sobre esas alternativas. `PageLists` sigue validando las aplicaciones antes de publicar los detalles.
+
+`PageFetch` reutiliza el HTML analizado durante una sola llamada y lo libera al terminar, incluso si la extracción falla. Reutilizar el descargador para varias filas no conserva los documentos analizados de las páginas anteriores.
+
 Si no hay tablas, lee el `Product` de schema.org. El hallazgo está en [alcance.md](alcance.md), en «Qué devolvió la búsqueda de FSX-5840301». La consulta `"FSX-5840301" gasket set 1989 2003` aceptó la ficha de iMotriz `FS5840301`. Esa página no trae tablas: el número del cuerpo va enmascarado y las listas están en `script[type="application/ld+json"]`. Se compararon tres fichas de esa plantilla, `FS5840301`, `FS5840300` y `OS5840301`, y el lector sigue lo que las tres comparten:
 
 - `sku` o `mpn` es el número de la ficha. El nombre es el producto. El texto anterior a «Aplicación y Compatibilidad» es la descripción.
